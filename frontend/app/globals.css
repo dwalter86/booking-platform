@@ -1,0 +1,14 @@
+html, body {
+  min-height: 100%;
+}
+body {
+  margin: 0;
+  background: #f6f8fb;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.table-responsive {
+  overflow-x: auto;
+}

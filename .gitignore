@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+frontend/.next/
+
+# Environment files (never commit these)
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# Junk
+*.bak
+*.bak.*
+.DS_Store

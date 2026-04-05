@@ -1,0 +1,140 @@
+import { AppError } from '../lib/errors.js';
+import { incrementMonthlyUsage, getTenantEntitlements, checkMonthlyLimit } from './entitlements-service.js';
+import { writeAudit } from './audit-service.js';
+
+function overlapClause(columnStart = 'start_at', columnEnd = 'end_at') {
+  return `NOT ($2 >= ${columnEnd} OR $3 <= ${columnStart})`;
+}
+
+export async function validateBookingRequest(client, tenantId, payload) {
+  const {
+    resource_id,
+    start_at,
+    end_at,
+    quantity = 1
+  } = payload;
+
+  if (!resource_id || !start_at || !end_at) {
+    throw new AppError(400, 'resource_id, start_at and end_at are required.');
+  }
+
+  const startAt = new Date(start_at);
+  const endAt = new Date(end_at);
+  if (!(startAt instanceof Date) || Number.isNaN(startAt.getTime()) || !(endAt instanceof Date) || Number.isNaN(endAt.getTime())) {
+    throw new AppError(400, 'Invalid booking datetime supplied.');
+  }
+  if (endAt <= startAt) {
+    throw new AppError(400, 'end_at must be after start_at.');
+  }
+
+  const resourceResult = await client.query(
+    `SELECT id, tenant_id, name, timezone, is_active, capacity, booking_mode,
+            max_booking_duration_hours, min_notice_hours, max_advance_booking_days
+       FROM public.resources
+      WHERE id = $1`,
+    [resource_id]
+  );
+  const resource = resourceResult.rows[0];
+  if (!resource) throw new AppError(404, 'Resource not found.');
+  if (!resource.is_active) throw new AppError(409, 'Resource is inactive.');
+
+  const hoursRequested = (endAt.getTime() - startAt.getTime()) / 3600000;
+  if (resource.max_booking_duration_hours && hoursRequested > Number(resource.max_booking_duration_hours)) {
+    throw new AppError(409, 'Booking exceeds maximum duration for this resource.');
+  }
+
+  const noticeHours = (startAt.getTime() - Date.now()) / 3600000;
+  if (noticeHours < Number(resource.min_notice_hours || 0)) {
+    throw new AppError(409, 'Booking does not meet minimum notice requirement.');
+  }
+
+  if (resource.max_advance_booking_days != null) {
+    const advanceDays = (startAt.getTime() - Date.now()) / 86400000;
+    if (advanceDays > Number(resource.max_advance_booking_days)) {
+      throw new AppError(409, 'Booking is too far in advance for this resource.');
+    }
+  }
+
+  const blockResult = await client.query(
+    `SELECT id
+       FROM public.unavailability_blocks
+      WHERE resource_id = $1
+        AND ${overlapClause('start_at', 'end_at')}
+      LIMIT 1`,
+    [resource_id, startAt, endAt]
+  );
+  if (blockResult.rowCount > 0) {
+    throw new AppError(409, 'Booking overlaps an unavailable period.');
+  }
+
+  const capacityResult = await client.query(
+    `SELECT COALESCE(SUM(quantity), 0) AS booked_quantity
+       FROM public.bookings
+      WHERE resource_id = $1
+        AND status IN ('provisional', 'confirmed')
+        AND ${overlapClause('start_at', 'end_at')}`,
+    [resource_id, startAt, endAt]
+  );
+  const alreadyBooked = Number(capacityResult.rows[0].booked_quantity || 0);
+  if (alreadyBooked + Number(quantity) > Number(resource.capacity)) {
+    throw new AppError(409, 'Booking exceeds remaining resource capacity.');
+  }
+
+  const entitlements = await getTenantEntitlements(client, tenantId);
+  const monthlyLimit = entitlements.limits['bookings:monthly'];
+  const monthlyUsage = entitlements.usage.bookings?.usage_value || 0;
+  if (!checkMonthlyLimit(monthlyUsage, monthlyLimit, 1)) {
+    throw new AppError(402, 'Monthly booking limit reached for this tenant.');
+  }
+
+  return { resource, startAt, endAt };
+}
+
+export async function createBooking(client, tenantId, actorUserId, payload, options = {}) {
+  const validated = await validateBookingRequest(client, tenantId, payload);
+  const status = options.status || payload.status || 'provisional';
+
+  const result = await client.query(
+    `INSERT INTO public.bookings (
+      tenant_id,
+      resource_id,
+      created_by_user_id,
+      public_reference,
+      status,
+      customer_name,
+      customer_email,
+      customer_phone,
+      start_at,
+      end_at,
+      quantity,
+      notes,
+      metadata
+    ) VALUES (
+      $1, $2, $3, COALESCE($4, encode(gen_random_bytes(6), 'hex')), $5,
+      $6, $7, $8, $9, $10, $11, $12, COALESCE($13::jsonb, '{}'::jsonb)
+    )
+    RETURNING *`,
+    [
+      tenantId,
+      payload.resource_id,
+      actorUserId || null,
+      payload.public_reference || null,
+      status,
+      payload.customer_name,
+      payload.customer_email || null,
+      payload.customer_phone || null,
+      validated.startAt,
+      validated.endAt,
+      Number(payload.quantity || 1),
+      payload.notes || null,
+      JSON.stringify(payload.metadata || {})
+    ]
+  );
+
+  await incrementMonthlyUsage(client, tenantId, 'bookings', 1);
+  await writeAudit(client, tenantId, actorUserId, 'booking', result.rows[0].id, 'created', {
+    status,
+    resource_id: payload.resource_id
+  });
+  return result.rows[0];
+}
