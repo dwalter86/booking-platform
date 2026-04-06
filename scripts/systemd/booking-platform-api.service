@@ -1,0 +1,16 @@
+[Unit]
+Description=Booking Platform API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/booking-platform/backend
+EnvironmentFile=/opt/booking-platform/backend/.env
+ExecStart=/usr/bin/node /opt/booking-platform/backend/src/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

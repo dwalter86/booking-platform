@@ -1,0 +1,16 @@
+[Unit]
+Description=Booking Platform Admin Frontend
+After=network.target booking-platform-api.service
+Wants=booking-platform-api.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/booking-platform/frontend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/booking-platform/frontend/.next/standalone/server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
