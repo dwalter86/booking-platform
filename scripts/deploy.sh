@@ -73,6 +73,26 @@ sudo rsync -a .next/static/ .next/standalone/.next/static/
 sudo rsync -a public/ .next/standalone/public/ 2>/dev/null || true
 
 # -----------------------------
+# Step 5b: Install systemd service files if changed
+# -----------------------------
+log "Updating systemd service files..."
+SYSTEMD_DIR="/etc/systemd/system"
+CHANGED=false
+for SVC in booking-platform-api.service booking-platform-admin.service; do
+  SRC="${REPO_DIR}/scripts/systemd/${SVC}"
+  DST="${SYSTEMD_DIR}/${SVC}"
+  if ! diff -q "${SRC}" "${DST}" > /dev/null 2>&1; then
+    sudo cp "${SRC}" "${DST}"
+    log "Updated ${SVC}"
+    CHANGED=true
+  fi
+done
+if [[ "${CHANGED}" == "true" ]]; then
+  sudo systemctl daemon-reload
+  log "systemd reloaded."
+fi
+
+# -----------------------------
 # Step 6: Restart backend service
 # -----------------------------
 log "Restarting backend service..."
