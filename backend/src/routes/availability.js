@@ -72,9 +72,9 @@ router.get('/', resolveTenant, async (req, res, next) => {
          FROM availability_exceptions
          WHERE tenant_id = $1
            AND resource_id = $2
-           AND starts_at < $4
-           AND ends_at > $3
-         ORDER BY starts_at ASC`,
+           AND exception_date >= $3::date
+           AND exception_date < $4::date
+         ORDER BY exception_date ASC, start_time ASC`,
         [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
       );
       const exceptions = exceptionsResult.rows;
