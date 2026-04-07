@@ -29,9 +29,11 @@ export async function validateBookingRequest(client, tenantId, payload) {
 
   const resourceResult = await client.query(
     `SELECT id, tenant_id, name, timezone, is_active, capacity, booking_mode,
-            max_booking_duration_hours, min_notice_hours, max_advance_booking_days
+            max_booking_duration_hours, min_notice_hours, max_advance_booking_days,
+            buffer_before_minutes, buffer_after_minutes
        FROM public.resources
-      WHERE id = $1`,
+      WHERE id = $1
+        FOR UPDATE`,
     [resource_id]
   );
   const resource = resourceResult.rows[0];
@@ -55,13 +57,18 @@ export async function validateBookingRequest(client, tenantId, payload) {
     }
   }
 
+  const bufferBefore = Number(resource.buffer_before_minutes || 0);
+  const bufferAfter = Number(resource.buffer_after_minutes || 0);
+  const effectiveStart = new Date(startAt.getTime() - bufferBefore * 60000);
+  const effectiveEnd = new Date(endAt.getTime() + bufferAfter * 60000);
+
   const blockResult = await client.query(
     `SELECT id
        FROM public.unavailability_blocks
       WHERE resource_id = $1
         AND ${overlapClause('start_at', 'end_at')}
       LIMIT 1`,
-    [resource_id, startAt, endAt]
+    [resource_id, effectiveStart, effectiveEnd]
   );
   if (blockResult.rowCount > 0) {
     throw new AppError(409, 'Booking overlaps an unavailable period.');
@@ -73,7 +80,7 @@ export async function validateBookingRequest(client, tenantId, payload) {
       WHERE resource_id = $1
         AND status IN ('provisional', 'confirmed')
         AND ${overlapClause('start_at', 'end_at')}`,
-    [resource_id, startAt, endAt]
+    [resource_id, effectiveStart, effectiveEnd]
   );
   const alreadyBooked = Number(capacityResult.rows[0].booked_quantity || 0);
   if (alreadyBooked + Number(quantity) > Number(resource.capacity)) {

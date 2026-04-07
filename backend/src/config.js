@@ -24,3 +24,11 @@ export const config = {
   trustProxy: process.env.TRUST_PROXY || '1',
   tenantBaseDomain: process.env.TENANT_BASE_DOMAIN || ''
 };
+
+if (config.env === 'production' && config.jwtSecret.startsWith('change')) {
+  throw new Error('JWT_SECRET must be set to a secure random value in production. Generate one with: node -e "require(\'crypto\').randomBytes(64).toString(\'hex\')"');
+}
+
+if (config.env === 'production' && config.corsOrigin === '*') {
+  console.warn('[SECURITY WARNING] CORS_ORIGIN is set to "*" in production. Set it to your actual frontend origin(s) in the .env file.');
+}

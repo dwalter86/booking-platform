@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { resolveTenant } from './middleware/tenant.js';
 import healthRoutes from './routes/health.js';
@@ -25,6 +26,22 @@ app.use(express.json({ limit: '2mb' }));
 app.use(morgan('combined'));
 app.use(resolveTenant);
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again later.' }
+});
+
+const publicBookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many booking requests. Please try again later.' }
+});
+
 app.get('/', (_req, res) => {
   res.json({
     service: 'booking-platform-api',
@@ -33,7 +50,7 @@ app.get('/', (_req, res) => {
 });
 
 app.use('/health', healthRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/unavailability-blocks', unavailabilityRoutes);
@@ -42,7 +59,7 @@ app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/calendar-connections', calendarConnectionRoutes);
 app.use('/api/admin/audit-log', auditRoutes);
-app.use('/api/public-bookings', publicBookingsRoutes);
+app.use('/api/public-bookings', publicBookingLimiter, publicBookingsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });

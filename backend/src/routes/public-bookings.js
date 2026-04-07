@@ -59,6 +59,14 @@ router.post('/request', resolveTenant, async (req, res, next) => {
     if (!customerEmail) throw new AppError(400, 'customer_email is required.');
     if (!startAtRaw || !endAtRaw) throw new AppError(400, 'start_at and end_at are required.');
 
+    if (customerName.length > 200) throw new AppError(400, 'customer_name must be 200 characters or fewer.');
+    if (customerEmail.length > 254) throw new AppError(400, 'customer_email must be 254 characters or fewer.');
+    if (customerPhone.length > 50) throw new AppError(400, 'customer_phone must be 50 characters or fewer.');
+    if (notes.length > 2000) throw new AppError(400, 'notes must be 2000 characters or fewer.');
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerEmail)) throw new AppError(400, 'customer_email must be a valid email address.');
+
     const startAt = new Date(startAtRaw);
     const endAt = new Date(endAtRaw);
 

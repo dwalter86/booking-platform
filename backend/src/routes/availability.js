@@ -67,22 +67,17 @@ router.get('/', resolveTenant, async (req, res, next) => {
         [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
       );
 
-      let exceptions = [];
-      try {
-        const exceptionsResult = await client.query(
-          `SELECT *
-           FROM availability_exceptions
-           WHERE tenant_id = $1
-             AND resource_id = $2
-             AND starts_at < $4
-             AND ends_at > $3
-           ORDER BY starts_at ASC`,
-          [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
-        );
-        exceptions = exceptionsResult.rows;
-      } catch {
-        exceptions = [];
-      }
+      const exceptionsResult = await client.query(
+        `SELECT *
+         FROM availability_exceptions
+         WHERE tenant_id = $1
+           AND resource_id = $2
+           AND starts_at < $4
+           AND ends_at > $3
+         ORDER BY starts_at ASC`,
+        [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
+      );
+      const exceptions = exceptionsResult.rows;
 
       const slots = [];
       const cursor = new Date(from);

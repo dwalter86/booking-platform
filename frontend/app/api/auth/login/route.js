@@ -40,7 +40,7 @@ export async function POST(request) {
     redirectResponse.cookies.set('booking_admin_token', data.token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: forwardedProto === 'https',
       path: '/'
     });
 

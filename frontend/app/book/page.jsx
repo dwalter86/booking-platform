@@ -45,18 +45,6 @@ export default async function PublicBookingPage({ searchParams }) {
                 {formError ? <div className="alert alert-danger">{formError}</div> : null}
 
                 <form action="/api/public-bookings/request" method="post">
-                  <div className="mb-3">
-                    <label className="form-label">Resource</label>
-                    <select name="resource_id" className="form-select" required>
-                      <option value="">Select a resource</option>
-                      {resources.map((resource) => (
-                        <option key={resource.id} value={resource.id}>
-                          {resource.name} (capacity: {resource.capacity})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   <PublicBookingCalendarClient resources={resources} />
 
                   <div className="row">

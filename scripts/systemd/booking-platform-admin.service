@@ -5,12 +5,16 @@ Wants=booking-platform-api.service
 
 [Service]
 Type=simple
-User=root
+User=booking
+Group=booking
 WorkingDirectory=/opt/booking-platform/frontend
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node /opt/booking-platform/frontend/.next/standalone/server.js
 Restart=always
 RestartSec=5
+NoNewPrivileges=true
+CapabilityBoundingSet=
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target

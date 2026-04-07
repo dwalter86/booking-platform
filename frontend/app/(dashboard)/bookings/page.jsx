@@ -27,14 +27,14 @@ async function getBookings(searchParams) {
       cache: 'no-store'
     });
 
-    const data = await response.json().catch(() => []);
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return { bookings: [], error: data?.error || 'Unable to load bookings.' };
+      return { bookings: [], pagination: null, error: data?.error || 'Unable to load bookings.' };
     }
 
-    return { bookings: Array.isArray(data) ? data : [], error: '' };
+    return { bookings: Array.isArray(data.data) ? data.data : [], pagination: data.pagination || null, error: '' };
   } catch {
-    return { bookings: [], error: 'Booking API unavailable.' };
+    return { bookings: [], pagination: null, error: 'Booking API unavailable.' };
   }
 }
 
@@ -72,7 +72,7 @@ function badgeClass(status) {
 }
 
 export default async function BookingsPage({ searchParams }) {
-  const [{ bookings, error }, resources] = await Promise.all([
+  const [{ bookings, pagination, error }, resources] = await Promise.all([
     getBookings(searchParams),
     getResources()
   ]);
@@ -177,6 +177,31 @@ export default async function BookingsPage({ searchParams }) {
                 </tbody>
               </table>
             </div>
+            {pagination && pagination.total_pages > 1 && (
+              <div className="card-footer d-flex align-items-center justify-content-between">
+                <span className="text-secondary text-sm">
+                  {pagination.total_count} bookings — page {pagination.page} of {pagination.total_pages}
+                </span>
+                <div className="d-flex gap-2">
+                  {pagination.page > 1 && (
+                    <Link
+                      className="btn btn-sm btn-outline-secondary"
+                      href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), page: pagination.page - 1 }).toString()}`}
+                    >
+                      Previous
+                    </Link>
+                  )}
+                  {pagination.page < pagination.total_pages && (
+                    <Link
+                      className="btn btn-sm btn-outline-secondary"
+                      href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), page: pagination.page + 1 }).toString()}`}
+                    >
+                      Next
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

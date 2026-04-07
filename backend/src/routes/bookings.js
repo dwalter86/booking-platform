@@ -106,8 +106,11 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
   const dateFrom = String(req.query?.date_from || '').trim() || null;
   const dateTo = String(req.query?.date_to || '').trim() || null;
   const bookingId = String(req.query?.booking_id || '').trim() || null;
+  const page = Math.max(1, Number.parseInt(req.query?.page ?? '1', 10) || 1);
+  const perPage = Math.min(100, Math.max(1, Number.parseInt(req.query?.per_page ?? '50', 10) || 50));
+  const offset = (page - 1) * perPage;
 
-  const rows = await withTenantContext(req.auth.tenant_id, async (client) => {
+  const result = await withTenantContext(req.auth.tenant_id, async (client) => {
     const where = ['b.tenant_id = $1'];
     const params = [req.auth.tenant_id];
 
@@ -136,7 +139,10 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
       where.push(`b.id = $${params.length}`);
     }
 
-    const result = await client.query(
+    params.push(perPage);
+    params.push(offset);
+
+    const query = await client.query(
       `SELECT
          b.id,
          b.tenant_id,
@@ -157,21 +163,32 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
          b.cancellation_reason,
          b.created_by_user_id,
          b.created_at,
-         b.updated_at
+         b.updated_at,
+         COUNT(*) OVER() AS total_count
        FROM public.bookings b
        LEFT JOIN public.resources r
          ON r.id = b.resource_id
         AND r.tenant_id = b.tenant_id
        WHERE ${where.join(' AND ')}
        ORDER BY b.start_at DESC, b.created_at DESC
-       LIMIT 500`,
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
 
-    return result.rows;
+    const totalCount = query.rows.length > 0 ? Number(query.rows[0].total_count) : 0;
+    const rows = query.rows.map(({ total_count, ...row }) => row);
+    return { rows, totalCount };
   });
 
-  res.json(rows);
+  res.json({
+    data: result.rows,
+    pagination: {
+      page,
+      per_page: perPage,
+      total_count: result.totalCount,
+      total_pages: Math.ceil(result.totalCount / perPage)
+    }
+  });
 }));
 
 router.get('/:id', requireAuth, asyncHandler(async (req, res) => {
