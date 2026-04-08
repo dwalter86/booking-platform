@@ -65,7 +65,7 @@ export async function POST(request) {
     name,
     slug,
     description: String(form.get('description') || '').trim() || null,
-    timezone: String(form.get('timezone') || 'UTC').trim() || 'UTC',
+    timezone: String(form.get('timezone') || 'Europe/London').trim() || 'Europe/London',
     is_active: boolFromForm(form.get('is_active')),
     capacity: numberOrNull(form.get('capacity'), 1) ?? 1,
     booking_mode: String(form.get('booking_mode') || 'free').trim() || 'free',

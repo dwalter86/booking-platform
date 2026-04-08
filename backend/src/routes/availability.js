@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { withTransaction } from '../lib/db.js';
-import { resolveTenant } from '../middleware/tenant.js';
 import { AppError } from '../lib/errors.js';
+import { generateAvailability } from '../services/slot-generator.js';
 
 const router = Router();
 
@@ -9,144 +9,116 @@ function badRequest(res, message) {
   return res.status(400).json({ error: message });
 }
 
-router.get('/', resolveTenant, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     if (!req.tenant) throw new AppError(400, 'Unable to resolve tenant from subdomain/header.');
 
     const resourceId = String(req.query.resource_id || '').trim();
-    const fromRaw = String(req.query.from || '').trim();
-    const toRaw = String(req.query.to || '').trim();
+    const fromRaw    = String(req.query.from || '').trim();
+    const toRaw      = String(req.query.to || '').trim();
 
     if (!resourceId) return badRequest(res, 'resource_id is required');
-    if (!fromRaw) return badRequest(res, 'from is required');
-    if (!toRaw) return badRequest(res, 'to is required');
+    if (!fromRaw)    return badRequest(res, 'from is required');
+    if (!toRaw)      return badRequest(res, 'to is required');
 
-    const from = new Date(fromRaw);
-    const to = new Date(toRaw);
+    // Accept either a date ("YYYY-MM-DD") or a full ISO datetime
+    const fromDate = fromRaw.slice(0, 10);
+    const toDate   = toRaw.slice(0, 10);
 
-    if (Number.isNaN(from.getTime())) return badRequest(res, 'from must be a valid ISO datetime');
-    if (Number.isNaN(to.getTime())) return badRequest(res, 'to must be a valid ISO datetime');
-    if (to <= from) return badRequest(res, 'to must be after from');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) return badRequest(res, 'from must be a valid date (YYYY-MM-DD)');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(toDate))   return badRequest(res, 'to must be a valid date (YYYY-MM-DD)');
+    if (toDate < fromDate) return badRequest(res, 'to must be on or after from');
 
     const payload = await withTransaction(async (client) => {
       await client.query('SELECT app.set_current_tenant($1)', [req.tenant.id]);
 
+      // 1. Load resource
       const resourceResult = await client.query(
-        `SELECT id, tenant_id, name, description, capacity, booking_mode, max_booking_hours, is_active, created_at, updated_at
-         FROM resources
-         WHERE tenant_id = $1
-           AND id = $2`,
+        `SELECT id, tenant_id, name, description, capacity, booking_mode,
+                timezone, is_active, created_at, updated_at
+           FROM public.resources
+          WHERE tenant_id = $1
+            AND id = $2`,
         [req.tenant.id, resourceId]
       );
-
-      if (!resourceResult.rows[0]) {
-        throw new AppError(404, 'Resource not found');
-      }
-
+      if (!resourceResult.rows[0]) throw new AppError(404, 'Resource not found');
       const resource = resourceResult.rows[0];
 
-      const bookingsResult = await client.query(
-        `SELECT id, tenant_id, resource_id, customer_name, customer_email, start_at, end_at, status, notes, created_at, updated_at, party_size
-         FROM bookings
-         WHERE tenant_id = $1
-           AND resource_id = $2
-           AND start_at < $4
-           AND end_at > $3
-         ORDER BY start_at ASC`,
-        [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
+      const timezone = resource.timezone || 'UTC';
+
+      // 2. Load availability rules for this resource
+      const rulesResult = await client.query(
+        `SELECT *
+           FROM public.availability_rules
+          WHERE resource_id = $1
+            AND is_open = true
+          ORDER BY day_of_week ASC, start_time ASC`,
+        [resourceId]
       );
 
-      const blocksResult = await client.query(
-        `SELECT id, tenant_id, resource_id, start_at, end_at, reason, created_by_user_id, created_at, updated_at
-         FROM unavailability_blocks
-         WHERE tenant_id = $1
-           AND resource_id = $2
-           AND start_at < $4
-           AND end_at > $3
-         ORDER BY start_at ASC`,
-        [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
-      );
-
+      // 3. Load exceptions in range
       const exceptionsResult = await client.query(
         `SELECT *
-         FROM availability_exceptions
-         WHERE tenant_id = $1
-           AND resource_id = $2
-           AND exception_date >= $3::date
-           AND exception_date < $4::date
-         ORDER BY exception_date ASC, start_time ASC`,
-        [req.tenant.id, resourceId, from.toISOString(), to.toISOString()]
+           FROM public.availability_exceptions
+          WHERE resource_id = $1
+            AND exception_date >= $2::date
+            AND exception_date <= $3::date
+          ORDER BY exception_date ASC, start_time ASC`,
+        [resourceId, fromDate, toDate]
       );
-      const exceptions = exceptionsResult.rows;
 
-      const slots = [];
-      const cursor = new Date(from);
-      while (cursor < to) {
-        const slotStart = new Date(cursor);
-        const slotEnd = new Date(cursor.getTime() + 60 * 60 * 1000);
-        if (slotEnd > to) break;
+      // 4. Load unavailability blocks overlapping the range
+      const blocksResult = await client.query(
+        `SELECT id, start_at, end_at, reason
+           FROM public.unavailability_blocks
+          WHERE resource_id = $1
+            AND start_at < ($3::date + interval '1 day')
+            AND end_at   > $2::date
+          ORDER BY start_at ASC`,
+        [resourceId, fromDate, toDate]
+      );
 
-        const overlapsBlock = blocksResult.rows.some((row) => {
-          return new Date(row.start_at) < slotEnd && new Date(row.end_at) > slotStart;
-        });
+      // 5. Load bookings overlapping the range
+      const bookingsResult = await client.query(
+        `SELECT id, start_at, end_at, status, quantity
+           FROM public.bookings
+          WHERE resource_id = $1
+            AND status IN ('provisional', 'confirmed')
+            AND start_at < ($3::date + interval '1 day')
+            AND end_at   > $2::date
+          ORDER BY start_at ASC`,
+        [resourceId, fromDate, toDate]
+      );
 
-        const overlappingBookings = bookingsResult.rows.filter((row) => {
-          return new Date(row.start_at) < slotEnd && new Date(row.end_at) > slotStart && row.status !== 'cancelled';
-        });
-
-        const bookedCount = overlappingBookings.reduce((sum, row) => sum + Number(row.party_size || 1), 0);
-        const availableCapacity = Math.max(0, Number(resource.capacity || 1) - bookedCount);
-
-        slots.push({
-          start_at: slotStart.toISOString(),
-          end_at: slotEnd.toISOString(),
-          blocked: overlapsBlock,
-          booked_count: bookedCount,
-          available_capacity: availableCapacity,
-          remaining_capacity: availableCapacity,
-          is_available: !overlapsBlock && availableCapacity > 0
-        });
-
-        cursor.setUTCHours(cursor.getUTCHours() + 1);
-      }
-
-      const perDayMap = new Map();
-      for (const slot of slots) {
-        const day = slot.start_at.slice(0, 10);
-        const existing = perDayMap.get(day) || {
-          date: day,
-          total_slots: 0,
-          available_slots: 0,
-          blocked_slots: 0,
-          fully_booked_slots: 0
-        };
-        existing.total_slots += 1;
-        if (slot.blocked) existing.blocked_slots += 1;
-        else if (slot.is_available) existing.available_slots += 1;
-        else existing.fully_booked_slots += 1;
-        perDayMap.set(day, existing);
-      }
+      // 6. Run slot generator
+      const { slots, per_day } = generateAvailability({
+        resourceId,
+        capacity:   Number(resource.capacity || 1),
+        timezone,
+        fromDate,
+        toDate,
+        rules:      rulesResult.rows,
+        exceptions: exceptionsResult.rows,
+        blocks:     blocksResult.rows,
+        bookings:   bookingsResult.rows,
+      });
 
       return {
         resource,
-        query: {
-          resource_id: resourceId,
-          from: from.toISOString(),
-          to: to.toISOString()
-        },
+        query: { resource_id: resourceId, from: fromDate, to: toDate },
         summary: {
-          total_slots: slots.length,
-          available_slots: slots.filter((s) => s.is_available).length,
-          blocked_slots: slots.filter((s) => s.blocked).length,
-          overlapping_bookings: bookingsResult.rows.length,
+          total_slots:                    slots.length,
+          available_slots:                slots.filter((s) => s.is_available).length,
+          blocked_slots:                  slots.filter((s) => s.blocked).length,
+          fully_booked_slots:             slots.filter((s) => !s.is_available && !s.blocked).length,
           overlapping_unavailability_blocks: blocksResult.rows.length,
-          availability_exceptions: exceptions.length
+          availability_exceptions:        exceptionsResult.rows.length,
+          has_rules:                      rulesResult.rows.length > 0,
         },
-        per_day: Array.from(perDayMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
+        per_day,
         slots,
-        bookings: bookingsResult.rows,
         unavailability_blocks: blocksResult.rows,
-        availability_exceptions: exceptions
+        availability_exceptions: exceptionsResult.rows,
       };
     });
 

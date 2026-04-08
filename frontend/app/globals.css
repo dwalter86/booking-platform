@@ -12,3 +12,24 @@ pre {
 .table-responsive {
   overflow-x: auto;
 }
+/* Grey out closed days in the booking calendar */
+.day-unavailable {
+  background-color: #f5f5f5 !important;
+  opacity: 0.6;
+}
+
+.fc .day-unavailable .fc-col-header-cell-cushion {
+  color: #aaa;
+  text-decoration: line-through;
+}
+
+/* Ensure available slots show pointer cursor */
+.fc .slot-available {
+  cursor: pointer;
+}
+
+/* Fully booked slots — no pointer */
+.fc .slot-full {
+  cursor: default;
+  pointer-events: none;
+}

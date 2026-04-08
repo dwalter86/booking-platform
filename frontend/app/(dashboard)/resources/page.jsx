@@ -53,7 +53,7 @@ export default async function ResourcesPage({ searchParams }) {
             </div>
             <div className="col-md-3">
               <label className="form-label">Timezone</label>
-              <input className="form-control" type="text" name="timezone" defaultValue="UTC" />
+              <input className="form-control" type="text" name="timezone" defaultValue="Europe/London" placeholder="e.g. Europe/London" />
             </div>
             <div className="col-md-3">
               <label className="form-label">Maximum booking hours</label>
@@ -136,7 +136,7 @@ export default async function ResourcesPage({ searchParams }) {
                       </div>
                       <div className="col-md-3">
                         <label className="form-label">Timezone</label>
-                        <input className="form-control" type="text" name="timezone" defaultValue={asValue(row.timezone, 'UTC')} />
+                        <input className="form-control" type="text" name="timezone" defaultValue={asValue(row.timezone, 'Europe/London')} placeholder="e.g. Europe/London" />
                       </div>
                       <div className="col-md-3">
                         <label className="form-label">Maximum booking hours</label>

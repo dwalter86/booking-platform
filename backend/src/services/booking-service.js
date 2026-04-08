@@ -1,9 +1,68 @@
+import { DateTime } from 'luxon';
+import { toZonedDateTime } from './slot-generator.js';
 import { AppError } from '../lib/errors.js';
 import { incrementMonthlyUsage, getTenantEntitlements, checkMonthlyLimit } from './entitlements-service.js';
 import { writeAudit } from './audit-service.js';
 
 function overlapClause(columnStart = 'start_at', columnEnd = 'end_at') {
   return `NOT ($2 >= ${columnEnd} OR $3 <= ${columnStart})`;
+}
+
+/**
+ * Check whether a requested booking window falls within an open availability
+ * window for the resource on that date.
+ *
+ * Returns true if the booking is permitted, false if outside open hours.
+ * If no rules are defined for the resource, defaults to PERMISSIVE (true)
+ * so existing bookings aren't broken during migration.
+ */
+async function isWithinAvailableHours(client, resourceId, timezone, startAt, endAt) {
+  const dateStr = DateTime.fromJSDate(startAt, { zone: timezone }).toFormat('yyyy-MM-dd');
+  const dayOfWeek = DateTime.fromJSDate(startAt, { zone: timezone }).weekday % 7;
+
+  // Load rules for this day
+  const rulesResult = await client.query(
+    `SELECT * FROM public.availability_rules
+      WHERE resource_id = $1
+        AND day_of_week = $2
+        AND is_open = true`,
+    [resourceId, dayOfWeek]
+  );
+
+  // No rules configured — permissive fallback
+  if (rulesResult.rows.length === 0) return true;
+
+  // Check for a closure exception on this date
+  const exceptionResult = await client.query(
+    `SELECT * FROM public.availability_exceptions
+      WHERE resource_id = $1
+        AND exception_date = $2::date`,
+    [resourceId, dateStr]
+  );
+
+  const exceptions = exceptionResult.rows;
+
+  // Full closure exception — deny
+  if (exceptions.some((e) => e.is_closed)) return false;
+
+  // Determine which windows apply: exception windows or rule windows
+  const windows = exceptions.length > 0
+    ? exceptions
+        .filter((e) => e.start_time && e.end_time)
+        .map((e) => ({
+          start: toZonedDateTime(dateStr, e.start_time, timezone),
+          end:   toZonedDateTime(dateStr, e.end_time,   timezone),
+        }))
+    : rulesResult.rows.map((r) => ({
+        start: toZonedDateTime(dateStr, r.start_time, timezone),
+        end:   toZonedDateTime(dateStr, r.end_time,   timezone),
+      }));
+
+  const bookingStart = DateTime.fromJSDate(startAt, { zone: timezone });
+  const bookingEnd   = DateTime.fromJSDate(endAt,   { zone: timezone });
+
+  // Booking must fit entirely within at least one open window
+  return windows.some((w) => bookingStart >= w.start && bookingEnd <= w.end);
 }
 
 export async function validateBookingRequest(client, tenantId, payload) {
@@ -33,12 +92,25 @@ export async function validateBookingRequest(client, tenantId, payload) {
             buffer_before_minutes, buffer_after_minutes
        FROM public.resources
       WHERE id = $1
+        AND tenant_id = $2
         FOR UPDATE`,
-    [resource_id]
+    [resource_id, tenantId]
   );
   const resource = resourceResult.rows[0];
   if (!resource) throw new AppError(404, 'Resource not found.');
   if (!resource.is_active) throw new AppError(409, 'Resource is inactive.');
+
+  // Availability rules check — placed here because resource must be loaded first
+  const withinHours = await isWithinAvailableHours(
+    client,
+    resource_id,
+    resource.timezone || 'UTC',
+    startAt,
+    endAt
+  );
+  if (!withinHours) {
+    throw new AppError(409, 'Booking falls outside of available hours for this resource.');
+  }
 
   const hoursRequested = (endAt.getTime() - startAt.getTime()) / 3600000;
   if (resource.max_booking_duration_hours && hoursRequested > Number(resource.max_booking_duration_hours)) {
