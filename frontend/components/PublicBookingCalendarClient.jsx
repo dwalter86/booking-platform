@@ -83,9 +83,12 @@ function buildClosureBackgrounds(closedDates, rangeStart, rangeEnd) {
  * Only shows available slots — blocked and fully booked are excluded from
  * the clickable events but kept as background indicators if blocked.
  */
-function buildSlotEvents(slots) {
+function buildSlotEvents(slots, now) {
   const events = [];
   for (const slot of slots || []) {
+    // Skip slots that have already started — they cannot be booked
+    if (new Date(slot.start_at) < now) continue;
+
     if (slot.blocked) {
       // Show blocked periods as a red background, not clickable
       events.push({
@@ -196,7 +199,7 @@ export default function PublicBookingCalendarClient({ resources = [], initialErr
         setHasRules(data?.summary?.has_rules ?? true);
         const closed = buildClosedDates(data?.per_day);
         setClosedDates(closed);
-        const slotEvents   = buildSlotEvents(data?.slots);
+        const slotEvents   = buildSlotEvents(data?.slots, new Date());
         const closureBgs   = buildClosureBackgrounds(closed, rangeFromStr, rangeToStr);
         const blockEvents  = (data?.unavailability_blocks || []).map((block) => ({
           id: `block-${block.id}`,
