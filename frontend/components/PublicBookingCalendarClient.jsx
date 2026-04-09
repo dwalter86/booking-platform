@@ -218,6 +218,16 @@ export default function PublicBookingCalendarClient({ resources = [], initialErr
     return () => controller.abort();
   }, [resourceId, rangeFromStr, rangeToStr]);
 
+  // Mirror the selected slot into the visible datetime-local inputs in the page.
+  // Those inputs are rendered by the parent server component (book/page.jsx) and
+  // carry `required`, so the browser blocks submission unless they have values.
+  useEffect(() => {
+    const startInput = document.querySelector('input[name="start_at_local"][type="datetime-local"]');
+    const endInput   = document.querySelector('input[name="end_at_local"][type="datetime-local"]');
+    if (startInput) startInput.value = selectedRange?.start || '';
+    if (endInput)   endInput.value   = selectedRange?.end   || '';
+  }, [selectedRange]);
+
   // Prevent clicking on non-available events
   const handleEventClick = useCallback((info) => {
     const { type, slot } = info.event.extendedProps || {};
