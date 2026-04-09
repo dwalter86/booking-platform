@@ -18,6 +18,7 @@ import auditRoutes from './routes/audit.js';
 import publicBookingsRoutes from './routes/public-bookings.js';
 import availabilityRulesRouter from './routes/availability-rules.js';
 import availabilityExceptionsRouter from './routes/availability-exceptions.js';
+import entitlementRoutes from './routes/entitlement.js';
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/health', healthRoutes);
 app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/entitlement', entitlementRoutes);
 app.use('/api/unavailability-blocks', unavailabilityRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/admin/users', adminUserRoutes);
