@@ -3,6 +3,11 @@ import { getTenantBySubdomain, extractTenantSubdomain, resolveTenantEntitlement 
 
 export async function resolveTenant(req, res, next) {
   try {
+    // Super-admin routes bypass tenant resolution entirely
+    if (req.path.startsWith('/api/superadmin') || req.path.includes('superadmin-login')) {
+      return next();
+    }
+
     // Super-admin users bypass tenant resolution
     if (req.user?.is_super_admin) {
       return next();
