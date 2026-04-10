@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import TrialGraceBanner from './TrialGraceBanner';
 
 const navItems = [
   ['Dashboard', '/dashboard'],
@@ -32,6 +33,7 @@ export default function LayoutShell({ title, children }) {
         </div>
       </aside>
       <div className="page-wrapper">
+        <TrialGraceBanner />
         <div className="page-header d-print-none">
           <div className="container-xl">
             <div className="row g-2 align-items-center">
