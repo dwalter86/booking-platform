@@ -15,6 +15,7 @@ export async function POST(request) {
   const tenantHost = hostHeader.split(':')[0];
   const forwardedProto = headerStore.get('x-forwarded-proto') || 'http';
   const baseUrl = `${forwardedProto}://${tenantHost}`;
+  const subdomain = tenantHost.split('.')[0];
   const token = cookies().get('booking_admin_token')?.value;
 
   if (!token) {
@@ -26,7 +27,8 @@ export async function POST(request) {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-tenant-subdomain': subdomain,
       },
       body: JSON.stringify({ email, full_name: fullName, password, role }),
       cache: 'no-store'

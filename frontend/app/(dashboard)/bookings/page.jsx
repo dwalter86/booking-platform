@@ -3,6 +3,14 @@ export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { config } from '../../../lib/config';
+import { headers } from 'next/headers';
+
+function getTenantSubdomain() {
+  const headerStore   = headers();
+  const forwardedHost = headerStore.get('x-forwarded-host');
+  const hostHeader    = forwardedHost || headerStore.get('host') || 'localhost';
+  return hostHeader.split(':')[0].split('.')[0] || null;
+}
 
 async function getBookings(searchParams) {
   const token = cookies().get('booking_admin_token')?.value;
@@ -20,9 +28,11 @@ async function getBookings(searchParams) {
   const url = `${config.apiBaseUrl}/api/bookings${query.toString() ? `?${query.toString()}` : ''}`;
 
   try {
+    const subdomain = getTenantSubdomain();
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        ...(subdomain ? { 'x-tenant-subdomain': subdomain } : {}),
       },
       cache: 'no-store'
     });
@@ -43,9 +53,11 @@ async function getResources() {
   if (!token) return [];
 
   try {
+    const subdomain = getTenantSubdomain();
     const response = await fetch(`${config.apiBaseUrl}/api/resources`, {
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        ...(subdomain ? { 'x-tenant-subdomain': subdomain } : {}),
       },
       cache: 'no-store'
     });
