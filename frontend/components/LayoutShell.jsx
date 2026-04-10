@@ -10,6 +10,7 @@ const navItems = [
   ['Admin Users', '/admin-users'],
   ['Plans', '/plans'],
   ['Audit Log', '/audit-log']
+  ['Settings', '/settings'],
 ];
 
 export default function LayoutShell({ title, children }) {

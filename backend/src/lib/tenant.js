@@ -31,9 +31,6 @@ export async function getTenantBySubdomain(subdomain) {
 export async function resolveTenantEntitlement(tenantId) {
   const GRACE_PERIOD_DAYS = 7;
   
-  // Set RLS context so tenant_subscriptions and plan tables are accessible
-  await query(`SELECT app.set_current_tenant($1)`, [tenantId]);
-
   const { rows } = await query(
     `SELECT
        t.id                          AS tenant_id,

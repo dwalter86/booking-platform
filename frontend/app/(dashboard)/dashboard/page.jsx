@@ -13,8 +13,11 @@ async function load() {
     apiFetch('/api/plans/entitlements'),
   ]);
 
-  const resources = resourcesRes.ok ? await resourcesRes.json() : [];
-  const bookings = bookingsRes.ok ? await bookingsRes.json() : [];
+  const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
+  const bookingsRaw  = bookingsRes.ok  ? await bookingsRes.json()  : [];
+
+  const resources = Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || []);
+  const bookings  = Array.isArray(bookingsRaw)  ? bookingsRaw  : (bookingsRaw.data  || []);
   const entitlements = plansRes.ok ? await plansRes.json() : {};
   return { resources, bookings, entitlements };
 }
