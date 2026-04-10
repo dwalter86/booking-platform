@@ -7,23 +7,29 @@ export const dynamic = 'force-dynamic';
 
 async function load() {
   await requireAuth();
-  const [resourcesRes, bookingsRes, plansRes, tenantRes, rulesRes] = await Promise.all([
+  const [resourcesRes, bookingsRes, plansRes, tenantRes] = await Promise.all([
     apiFetch('/api/resources'),
     apiFetch('/api/bookings'),
     apiFetch('/api/plans/entitlements'),
     apiFetch('/api/tenant/profile'),
-    apiFetch('/api/availability-rules'),
   ]);
 
   const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
   const bookingsRaw  = bookingsRes.ok  ? await bookingsRes.json()  : [];
-  const rulesRaw     = rulesRes.ok     ? await rulesRes.json()     : [];
 
   const resources    = Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || []);
   const bookings     = Array.isArray(bookingsRaw)  ? bookingsRaw  : (bookingsRaw.data  || []);
-  const rules        = Array.isArray(rulesRaw)     ? rulesRaw     : (rulesRaw.data     || []);
   const entitlements = plansRes.ok ? await plansRes.json() : {};
   const tenant       = tenantRes.ok ? await tenantRes.json() : null;
+
+  // Check if any resource has availability rules configured
+  // Only fetch if we have at least one resource
+  let rules = [];
+  if (resources.length > 0) {
+    const rulesRes = await apiFetch(`/api/availability-rules?resource_id=${resources[0].id}`);
+    const rulesRaw = rulesRes.ok ? await rulesRes.json() : [];
+    rules = Array.isArray(rulesRaw) ? rulesRaw : (rulesRaw.data || []);
+  }
 
   return { resources, bookings, entitlements, tenant, rules };
 }
