@@ -9,7 +9,7 @@ const navItems = [
   ['Availability Rules', '/availability-rules'],
   ['Admin Users', '/admin-users'],
   ['Plans', '/plans'],
-  ['Audit Log', '/audit-log']
+  ['Audit Log', '/audit-log'],
   ['Settings', '/settings'],
 ];
 
