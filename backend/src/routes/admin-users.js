@@ -13,6 +13,7 @@ router.get('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
     const result = await client.query(
       `SELECT id, tenant_id, email, full_name, role, is_active, last_login_at, created_at, updated_at
          FROM public.users
+      WHERE is_super_admin = false
         ORDER BY created_at DESC`
     );
     return result.rows;
