@@ -16,7 +16,8 @@ export async function resolveTenant(req, res, next) {
     req.tenant          = subdomain ? await getTenantBySubdomain(subdomain) : null;
 
     // No tenant found for this subdomain
-    if (subdomain && !req.tenant) {
+    // Exempt superadmin-login which has no tenant by design
+    if (subdomain && !req.tenant && !req.path.includes('superadmin-login')) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
 
