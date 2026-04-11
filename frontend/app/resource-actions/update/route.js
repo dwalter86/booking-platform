@@ -98,5 +98,9 @@ export async function POST(request) {
     return NextResponse.redirect(new URL('/resources?error=API%20unavailable', baseUrl), 302);
   }
 
-  return NextResponse.redirect(new URL('/resources?success=Resource%20updated', baseUrl), 302);
+  const returnId = String(form.get('return_resource_id') || '').trim();
+  const redirectPath = returnId
+    ? `/resources?resource_id=${encodeURIComponent(returnId)}&success=Resource%20updated`
+    : '/resources?success=Resource%20updated';
+  return NextResponse.redirect(new URL(redirectPath, baseUrl), 302);
 }

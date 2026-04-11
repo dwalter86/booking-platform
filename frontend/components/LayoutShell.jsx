@@ -14,7 +14,7 @@ const navItems = [
   ['Settings', '/settings'],
 ];
 
-export default function LayoutShell({ title, children }) {
+export default function LayoutShell({ title, headerAction, children }) {
   return (
     <div className="page">
       <aside className="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
@@ -40,6 +40,7 @@ export default function LayoutShell({ title, children }) {
               <div className="col">
                 <h2 className="page-title">{title}</h2>
               </div>
+              {headerAction && <div className="col-auto">{headerAction}</div>}
             </div>
           </div>
         </div>
