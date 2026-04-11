@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { config } from '../../../lib/config';
 import { headers } from 'next/headers';
+import LayoutShell from '../../../components/LayoutShell';
+import { formatDateTime } from '../../../lib/format';
 
 function getTenantSubdomain() {
   const headerStore   = headers();
@@ -70,13 +72,6 @@ async function getResources() {
   }
 }
 
-function fmt(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString();
-}
-
 function badgeClass(status) {
   if (status === 'confirmed') return 'bg-green-lt';
   if (status === 'cancelled') return 'bg-red-lt';
@@ -94,13 +89,8 @@ export default async function BookingsPage({ searchParams }) {
   const success = searchParams?.success || '';
 
   return (
-    <div className="container-xl py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="page-title mb-1">Bookings</h1>
-          <div className="text-secondary">Review, confirm, and cancel provisional bookings.</div>
-        </div>
-      </div>
+    <LayoutShell title="Bookings">
+      <p className="text-secondary mb-4">Review, confirm, and cancel provisional bookings.</p>
 
       {success ? <div className="alert alert-success">{success}</div> : null}
       {error ? <div className="alert alert-danger">{error}</div> : null}
@@ -174,8 +164,8 @@ export default async function BookingsPage({ searchParams }) {
                         <div>{booking.customer_name || '—'}</div>
                         <div className="text-secondary small">{booking.customer_email || '—'}</div>
                       </td>
-                      <td>{fmt(booking.start_at)}</td>
-                      <td>{fmt(booking.end_at)}</td>
+                      <td>{formatDateTime(booking.start_at)}</td>
+                      <td>{formatDateTime(booking.end_at)}</td>
                       <td>
                         <Link
                           className="btn btn-sm btn-outline-primary"
@@ -247,10 +237,10 @@ export default async function BookingsPage({ searchParams }) {
                     <dd className="col-sm-8">{selectedBooking.party_size || 1}</dd>
 
                     <dt className="col-sm-4">Start</dt>
-                    <dd className="col-sm-8">{fmt(selectedBooking.start_at)}</dd>
+                    <dd className="col-sm-8">{formatDateTime(selectedBooking.start_at)}</dd>
 
                     <dt className="col-sm-4">End</dt>
-                    <dd className="col-sm-8">{fmt(selectedBooking.end_at)}</dd>
+                    <dd className="col-sm-8">{formatDateTime(selectedBooking.end_at)}</dd>
 
                     <dt className="col-sm-4">Source</dt>
                     <dd className="col-sm-8">{selectedBooking.source || '—'}</dd>
@@ -262,10 +252,10 @@ export default async function BookingsPage({ searchParams }) {
                     <dd className="col-sm-8">{selectedBooking.notes || '—'}</dd>
 
                     <dt className="col-sm-4">Confirmed at</dt>
-                    <dd className="col-sm-8">{fmt(selectedBooking.confirmed_at)}</dd>
+                    <dd className="col-sm-8">{formatDateTime(selectedBooking.confirmed_at)}</dd>
 
                     <dt className="col-sm-4">Cancelled at</dt>
-                    <dd className="col-sm-8">{fmt(selectedBooking.cancelled_at)}</dd>
+                    <dd className="col-sm-8">{formatDateTime(selectedBooking.cancelled_at)}</dd>
 
                     <dt className="col-sm-4">Cancel reason</dt>
                     <dd className="col-sm-8">{selectedBooking.cancellation_reason || '—'}</dd>
@@ -304,6 +294,6 @@ export default async function BookingsPage({ searchParams }) {
           </div>
         </div>
       </div>
-    </div>
+    </LayoutShell>
   );
 }
