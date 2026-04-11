@@ -20,7 +20,8 @@ export async function POST(request) {
   if (!token) return NextResponse.redirect(new URL('/login', baseUrl), 302);
 
   const resource_id = String(form.get('resource_id') || '').trim();
-  const redirectBase = `/availability-rules?resource_id=${resource_id}`;
+  const returnBase = String(form.get('return_base') || '').trim();
+  const redirectBase = returnBase || `/availability-rules?resource_id=${resource_id}`;
   const is_closed = form.get('is_closed') === 'on';
 
   const payload = {

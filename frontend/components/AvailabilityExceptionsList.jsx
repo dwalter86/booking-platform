@@ -1,6 +1,6 @@
 'use client';
 
-export default function AvailabilityExceptionsList({ exceptions, resourceId }) {
+export default function AvailabilityExceptionsList({ exceptions, resourceId, returnBase }) {
   if (!Array.isArray(exceptions) || !exceptions.length) {
     return <p className="text-secondary mb-0">No exceptions set. Add one below for bank holidays or special closures.</p>;
   }
@@ -27,6 +27,7 @@ export default function AvailabilityExceptionsList({ exceptions, resourceId }) {
               <form action="/availability-exception-actions/delete" method="post">
                 <input type="hidden" name="id" value={ex.id} />
                 <input type="hidden" name="resource_id" value={resourceId} />
+                {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
                 <button className="btn btn-outline-danger btn-sm" type="submit">Delete</button>
               </form>
             </div>

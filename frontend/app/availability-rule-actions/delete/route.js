@@ -21,7 +21,8 @@ export async function POST(request) {
 
   const id = String(form.get('id') || '').trim();
   const resource_id = String(form.get('resource_id') || '').trim();
-  const redirectBase = `/availability-rules?resource_id=${resource_id}`;
+  const returnBase = String(form.get('return_base') || '').trim();
+  const redirectBase = returnBase || `/availability-rules?resource_id=${resource_id}`;
 
   try {
     const response = await fetch(`${config.apiBaseUrl}/api/availability-rules/${id}`, {

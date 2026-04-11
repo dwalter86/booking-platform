@@ -2,7 +2,7 @@
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export default function AvailabilityRulesList({ rules, resourceId }) {
+export default function AvailabilityRulesList({ rules, resourceId, returnBase }) {
   if (!Array.isArray(rules) || !rules.length) {
     return <p className="text-secondary mb-0">No availability rules yet. Use the form above to add the first rule.</p>;
   }
@@ -38,6 +38,7 @@ export default function AvailabilityRulesList({ rules, resourceId }) {
               <form action="/availability-rule-actions/delete" method="post">
                 <input type="hidden" name="id" value={rule.id} />
                 <input type="hidden" name="resource_id" value={resourceId} />
+                {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
                 <button className="btn btn-outline-danger btn-sm" type="submit">Delete</button>
               </form>
             </div>
