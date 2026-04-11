@@ -22,6 +22,7 @@ async function getBookings(searchParams) {
 
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(searchParams || {})) {
+    if (key === 'booking_id') continue;
     if (typeof value === 'string' && value.trim()) {
       query.set(key, value.trim());
     }
@@ -156,26 +157,29 @@ export default async function BookingsPage({ searchParams }) {
                     <tr>
                       <td colSpan="6" className="text-secondary">No bookings found.</td>
                     </tr>
-                  ) : bookings.map((booking) => (
-                    <tr key={booking.id}>
-                      <td><span className={`badge ${badgeClass(booking.status)}`}>{booking.status}</span></td>
-                      <td>{booking.resource_name || 'Unknown resource'}</td>
-                      <td>
-                        <div>{booking.customer_name || '—'}</div>
-                        <div className="text-secondary small">{booking.customer_email || '—'}</div>
-                      </td>
-                      <td>{formatDateTime(booking.start_at)}</td>
-                      <td>{formatDateTime(booking.end_at)}</td>
-                      <td>
-                        <Link
-                          className="btn btn-sm btn-outline-primary"
-                          href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), booking_id: booking.id }).toString()}`}
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  ) : bookings.map((booking) => {
+                    const isSelected = booking.id === selectedBookingId;
+                    return (
+                      <tr key={booking.id} className={isSelected ? 'table-active' : undefined}>
+                        <td><span className={`badge ${badgeClass(booking.status)}`}>{booking.status}</span></td>
+                        <td>{booking.resource_name || 'Unknown resource'}</td>
+                        <td>
+                          <div>{booking.customer_name || '—'}</div>
+                          <div className="text-secondary small">{booking.customer_email || '—'}</div>
+                        </td>
+                        <td>{formatDateTime(booking.start_at)}</td>
+                        <td>{formatDateTime(booking.end_at)}</td>
+                        <td>
+                          <Link
+                            className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
+                            href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), booking_id: booking.id }).toString()}`}
+                          >
+                            View
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
