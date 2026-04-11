@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -9,31 +9,9 @@ import interactionPlugin from '@fullcalendar/interaction';
 const FullCalendar = dynamic(() => import('@fullcalendar/react'), { ssr: false });
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Date helpers
 // ---------------------------------------------------------------------------
 
-function formatLocalInput(date) {
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function addDays(date, days) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-/**
- * Format a Date as "YYYY-MM-DD" using LOCAL date parts.
- * Never use toISOString() for this — it converts to UTC first, which shifts
- * the date backwards by one day in UTC+ timezones (e.g. BST = UTC+1).
- */
 function localDateStr(date) {
   return (
     date.getFullYear() +
@@ -42,320 +20,1006 @@ function localDateStr(date) {
   );
 }
 
-/**
- * Convert per_day array into a Set of closed date strings "YYYY-MM-DD"
- * A day is closed if is_open is false OR available_slots is 0 with no open free windows.
- */
-function buildClosedDates(perDay) {
-  const closed = new Set();
-  for (const day of perDay || []) {
-    if (!day.is_open || day.available_slots === 0) {
-      closed.add(day.date);
-    }
-  }
-  return closed;
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
 }
 
-/**
- * Build FullCalendar background events that grey out fully closed dates.
- */
-function buildClosureBackgrounds(closedDates, rangeStart, rangeEnd) {
-  const events = [];
-  for (const date of closedDates) {
-    // Only include dates within the fetched range
-    if (date >= rangeStart && date <= rangeEnd) {
-      events.push({
-        id: `closed-${date}`,
-        start: date,
-        end: date,
-        allDay: true,
-        display: 'background',
-        backgroundColor: '#f0f0f0',
-        classNames: ['day-closed'],
-      });
-    }
-  }
-  return events;
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-/**
- * Convert slots array from the API into FullCalendar event objects.
- * Only shows available slots — blocked and fully booked are excluded from
- * the clickable events but kept as background indicators if blocked.
- */
-function buildSlotEvents(slots, now) {
-  const events = [];
-  for (const slot of slots || []) {
-    // Skip slots that have already started — they cannot be booked
-    if (new Date(slot.start_at) < now) continue;
-
-    if (slot.blocked) {
-      // Show blocked periods as a red background, not clickable
-      events.push({
-        id: `blocked-${slot.start_at}`,
-        start: slot.start_at,
-        end: slot.end_at,
-        display: 'background',
-        backgroundColor: '#ffd5d5',
-        classNames: ['slot-blocked'],
-      });
-      continue;
-    }
-
-    if (!slot.is_available) {
-      // Fully booked — show as a muted non-clickable event
-      events.push({
-        id: `full-${slot.start_at}`,
-        title: 'Fully booked',
-        start: slot.start_at,
-        end: slot.end_at,
-        backgroundColor: '#c8c8c8',
-        borderColor: '#b0b0b0',
-        textColor: '#555555',
-        classNames: ['slot-full'],
-        extendedProps: { type: 'full' },
-      });
-      continue;
-    }
-
-    // Available — clickable green slot
-    const capacityLabel = slot.available_capacity > 1
-      ? ` (${slot.available_capacity} left)`
-      : '';
-
-    events.push({
-      id: `slot-${slot.start_at}`,
-      title: `Available${capacityLabel}`,
-      start: slot.start_at,
-      end: slot.end_at,
-      backgroundColor: '#2fb344',
-      borderColor: '#2fb344',
-      textColor: '#ffffff',
-      classNames: ['slot-available'],
-      extendedProps: { type: 'slot', slot },
-    });
-  }
-  return events;
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-/**
- * For free-mode resources (no slots, just open windows), build open window
- * events so the user can see when the resource is bookable.
- */
-function buildFreeWindowEvents(perDay, timezone) {
-  // Free mode: the resolver returns one "free" slot per open window
-  // This is already handled by buildSlotEvents above — this function is a no-op
-  // kept as a hook for future differentiation if needed.
-  return [];
+function formatDisplayDateShort(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function formatTime(isoString) {
+  return new Date(isoString).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDuration(hours) {
+  if (!hours) return '';
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year, month) {
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1; // Monday = 0
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Mini calendar component
 // ---------------------------------------------------------------------------
 
-export default function PublicBookingCalendarClient({ resources = [], initialError = '' }) {
-  const [resourceId, setResourceId] = useState(resources[0]?.id || '');
-  const [events, setEvents] = useState([]);
+function MiniCalendar({ selectedDate, onSelectDate, closedDates, fullDates, hasRules, resourceId }) {
+  const today = localDateStr(new Date());
+  const todayDate = new Date();
+
+  const [viewYear, setViewYear] = useState(() => {
+    if (selectedDate) return parseInt(selectedDate.split('-')[0]);
+    return todayDate.getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (selectedDate) return parseInt(selectedDate.split('-')[1]) - 1;
+    return todayDate.getMonth();
+  });
+
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
+
+  const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('en-GB', {
+    month: 'long', year: 'numeric'
+  });
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  }
+
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  }
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={prevMonth}>&larr;</button>
+        <span style={{ fontWeight: 500, fontSize: 13 }}>{monthName}</span>
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={nextMonth}>&rarr;</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, textAlign: 'center' }}>
+        {['M','T','W','T','F','S','S'].map((d, i) => (
+          <div key={i} style={{ fontSize: 11, fontWeight: 500, color: '#868e96', padding: '3px 0' }}>{d}</div>
+        ))}
+        {days.map((d, i) => {
+          if (!d) return <div key={`empty-${i}`} />;
+
+          const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isPast = dateStr < today;
+          const isToday = dateStr === today;
+          const isClosed = closedDates.has(dateStr);
+          const isFull = fullDates.has(dateStr);
+          const isSelected = dateStr === selectedDate;
+          const isSelectable = !isPast && !isClosed && !isFull;
+
+          let bg = 'transparent';
+          let color = '#212529';
+          let textDecoration = 'none';
+          let cursor = 'pointer';
+          let fontWeight = isToday ? 600 : 400;
+          let borderRadius = 4;
+          let opacity = 1;
+
+          if (isSelected) { bg = '#206bc4'; color = '#fff'; }
+          else if (isClosed) { bg = '#f9f9f7'; color = '#bbb'; textDecoration = 'line-through'; cursor = 'not-allowed'; }
+          else if (isFull) { color = '#bbb'; textDecoration = 'line-through'; cursor = 'not-allowed'; }
+          else if (isPast) { color = '#ccc'; cursor = 'not-allowed'; }
+          else if (hasRules) { bg = '#d3f9d8'; color = '#1a7a2e'; }
+
+          return (
+            <div
+              key={dateStr}
+              onClick={() => isSelectable && onSelectDate(dateStr)}
+              style={{
+                padding: '5px 2px', fontSize: 12, borderRadius,
+                background: bg, color, textDecoration, cursor,
+                fontWeight, opacity, lineHeight: 1.3,
+                userSelect: 'none',
+              }}
+              title={isClosed ? 'Closed' : isFull ? 'Fully booked' : ''}
+            >
+              {d}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+        {hasRules && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#666' }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: '#d3f9d8', border: '1px solid #82c91e', display: 'inline-block' }} />
+            Open
+          </span>
+        )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#666' }}>
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f9f9f7', border: '1px solid #ddd', display: 'inline-block' }} />
+          Closed
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#666' }}>
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f0f0f0', border: '1px solid #ccc', display: 'inline-block' }} />
+          Full
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Slot table — availability_only and hybrid slot view
+// ---------------------------------------------------------------------------
+
+function SlotTable({ slots, selectedSlot, onSelectSlot, capacity }) {
+  const now = new Date();
+  const available = slots.filter(s => !s.blocked && s.is_available && new Date(s.start_at) >= now);
+  const all = slots.filter(s => new Date(s.start_at) >= now);
+
+  if (all.length === 0) return null;
+
+  return (
+    <table className="table table-sm" style={{ fontSize: 13 }}>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Availability</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {all.map((slot) => {
+          const isSelected = selectedSlot?.start_at === slot.start_at;
+          const isFull = !slot.is_available && !slot.blocked;
+          const isBlocked = slot.blocked;
+          const isPast = new Date(slot.start_at) < now;
+
+          let rowClass = '';
+          if (isSelected) rowClass = 'slot-row-selected';
+          else if (isFull) rowClass = 'slot-row-full';
+          else if (isBlocked) rowClass = 'slot-blocked';
+
+          return (
+            <tr key={slot.start_at} className={rowClass}>
+              <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {formatTime(slot.start_at)}–{formatTime(slot.end_at)}
+              </td>
+              <td>
+                {isBlocked ? (
+                  <span className="text-muted">Unavailable</span>
+                ) : isFull ? (
+                  <span className="text-muted">Fully booked</span>
+                ) : (
+                  <>
+                    <span style={{ color: '#1a7a2e' }}>Available</span>
+                    {capacity > 1 && slot.available_capacity != null && (
+                      <div style={{ fontSize: 11, color: '#868e96' }}>
+                        {slot.available_capacity} of {capacity} left
+                      </div>
+                    )}
+                  </>
+                )}
+              </td>
+              <td style={{ textAlign: 'right' }}>
+                {!isBlocked && !isFull && !isPast ? (
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-success'}`}
+                    onClick={() => onSelectSlot(isSelected ? null : slot)}
+                  >
+                    {isSelected ? 'Selected' : 'Select'}
+                  </button>
+                ) : (
+                  <span style={{ color: '#ccc', fontSize: 12 }}>—</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export default function PublicBookingCalendarClient({
+  resources = [],
+  apiError = '',
+  initialDraft = null,
+  draftExpired = false,
+  draftToken = null,
+}) {
+  // Step state
+  const [step, setStep] = useState(1);
+
+  // Draft
+  const [currentDraftToken, setCurrentDraftToken] = useState(draftToken || null);
+
+  // Step 1 form
+  const [resourceId, setResourceId] = useState(initialDraft?.resource_id || resources[0]?.id || '');
+  const [selectedDate, setSelectedDate] = useState(initialDraft?.preferred_date || null);
+  const [firstName, setFirstName] = useState(() => {
+    const name = initialDraft?.customer_name || '';
+    return name.split(' ')[0] || '';
+  });
+  const [lastName, setLastName] = useState(() => {
+    const name = initialDraft?.customer_name || '';
+    return name.split(' ').slice(1).join(' ') || '';
+  });
+  const [email, setEmail] = useState(initialDraft?.customer_email || '');
+  const [phone, setPhone] = useState(initialDraft?.customer_phone || '');
+  const [partySize, setPartySize] = useState(initialDraft?.party_size || 1);
+  const [notes, setNotes] = useState(initialDraft?.notes || '');
+
+  // Step 1 state
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftSaveError, setDraftSaveError] = useState('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  // Mini calendar data
   const [closedDates, setClosedDates] = useState(new Set());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(initialError || '');
-  const [selectedRange, setSelectedRange] = useState(null);
-  const [hasRules, setHasRules] = useState(true); // assume true until we know otherwise
+  const [fullDates, setFullDates] = useState(new Set());
+  const [calLoading, setCalLoading] = useState(false);
+
+  // Step 2 state
+  const [slots, setSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  // Free book time
+  const [freeStart, setFreeStart] = useState('');
+  const [freeEnd, setFreeEnd] = useState('');
+  const [durationWarning, setDurationWarning] = useState('');
+
+  // Hybrid tab
+  const [hybridTab, setHybridTab] = useState('slot');
 
   const selectedResource = useMemo(
-    () => resources.find((r) => r.id === resourceId) || null,
+    () => resources.find(r => r.id === resourceId) || null,
     [resources, resourceId]
   );
 
-  // Date range for the fetch — today + 30 days
-  const rangeFrom = useMemo(() => startOfDay(new Date()), []);
-  const rangeTo   = useMemo(() => addDays(rangeFrom, 30), [rangeFrom]);
-  // Use local date parts — toISOString() converts to UTC first, which shifts the
-  // date back by one day in UTC+ timezones (e.g. BST), causing off-by-one errors.
-  const rangeFromStr = useMemo(() => localDateStr(rangeFrom), [rangeFrom]);
-  const rangeToStr   = useMemo(() => localDateStr(rangeTo),   [rangeTo]);
+  const bookingMode = selectedResource?.booking_mode || 'free';
+  const maxHours = selectedResource?.max_booking_duration_hours
+    ? Number(selectedResource.max_booking_duration_hours)
+    : null;
 
+  // Auto-advance to step 2 if draft has all required fields
   useEffect(() => {
-    if (!resourceId) {
-      setEvents([]);
+    if (initialDraft?.resource_id && initialDraft?.preferred_date && initialDraft?.customer_name && initialDraft?.customer_email) {
+      setStep(2);
+    }
+  }, []);
+
+  // Fetch per-day availability when resource changes
+  useEffect(() => {
+    if (!resourceId) return;
+    if (!selectedResource?.has_rules) {
       setClosedDates(new Set());
+      setFullDates(new Set());
       return;
     }
 
-    const controller = new AbortController();
+    const from = localDateStr(new Date());
+    const to = localDateStr(addDays(new Date(), 60));
 
-    (async () => {
-      setLoading(true);
-      setError('');
-      const url = `/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${encodeURIComponent(rangeFromStr)}&to=${encodeURIComponent(rangeToStr)}`;
-      try {
-        const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
-        const data = await response.json().catch(() => ({}));
-        if (controller.signal.aborted) return;
-        if (!response.ok) {
-          setError(data?.error || 'Unable to load availability.');
-          return;
+    setCalLoading(true);
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}`, {
+      cache: 'no-store'
+    })
+      .then(r => r.json())
+      .then(data => {
+        const closed = new Set();
+        const full = new Set();
+        for (const day of data?.per_day || []) {
+          if (!day.is_open) closed.add(day.date);
+          else if (day.available_slots === 0) full.add(day.date);
         }
-        setHasRules(data?.summary?.has_rules ?? true);
-        const closed = buildClosedDates(data?.per_day);
         setClosedDates(closed);
-        const slotEvents   = buildSlotEvents(data?.slots, new Date());
-        const closureBgs   = buildClosureBackgrounds(closed, rangeFromStr, rangeToStr);
-        const blockEvents  = (data?.unavailability_blocks || []).map((block) => ({
-          id: `block-${block.id}`,
-          start: block.start_at,
-          end: block.end_at,
-          display: 'background',
-          backgroundColor: '#ffd5d5',
-          classNames: ['block-unavailable'],
-        }));
-        setEvents([...closureBgs, ...blockEvents, ...slotEvents]);
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        setError('Unable to load availability.');
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    })();
+        setFullDates(full);
+      })
+      .catch(() => {})
+      .finally(() => setCalLoading(false));
+  }, [resourceId]);
 
-    return () => controller.abort();
-  }, [resourceId, rangeFromStr, rangeToStr]);
-
-  // Mirror the selected slot into the visible datetime-local inputs in the page.
-  // Those inputs are rendered by the parent server component (book/page.jsx) and
-  // carry `required`, so the browser blocks submission unless they have values.
+  // Fetch slots for selected date (step 2)
   useEffect(() => {
-    const startInput = document.querySelector('input[name="start_at_local"][type="datetime-local"]');
-    const endInput   = document.querySelector('input[name="end_at_local"][type="datetime-local"]');
-    if (startInput) startInput.value = selectedRange?.start || '';
-    if (endInput)   endInput.value   = selectedRange?.end   || '';
-  }, [selectedRange]);
+    if (step !== 2 || !resourceId || !selectedDate) return;
+    if (bookingMode === 'free') return;
 
-  // Prevent clicking on non-available events
-  const handleEventClick = useCallback((info) => {
-    const { type, slot } = info.event.extendedProps || {};
-    if (type !== 'slot' || !slot) return;
+    setSlotsLoading(true);
+    setSlotsError('');
+    setSelectedSlot(null);
 
-    setSelectedRange({
-      start: formatLocalInput(new Date(slot.start_at)),
-      end:   formatLocalInput(new Date(slot.end_at)),
-    });
-  }, []);
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}`, {
+      cache: 'no-store'
+    })
+      .then(r => r.json())
+      .then(data => {
+        setSlots(data?.slots || []);
+      })
+      .catch(() => setSlotsError('Unable to load slots.'))
+      .finally(() => setSlotsLoading(false));
+  }, [step, resourceId, selectedDate, bookingMode]);
 
-  // Determine what the calendar should display to the user
-  const statusMessage = useMemo(() => {
-    if (loading) return null;
-    if (error) return null;
-    if (!resourceId) return null;
-    if (!hasRules) return { type: 'warning', text: 'This resource has no availability schedule configured yet.' };
-    if (!selectedRange) return { type: 'info', text: 'Click an available slot on the calendar to select it.' };
-    return null;
-  }, [loading, error, resourceId, hasRules, selectedRange]);
+  // Set default free book times when date is selected
+  useEffect(() => {
+    if (selectedDate && bookingMode === 'free') {
+      setFreeStart(`${selectedDate}T09:00`);
+      setFreeEnd(`${selectedDate}T10:00`);
+    }
+  }, [selectedDate, bookingMode]);
+
+  // Duration check for free book
+  useEffect(() => {
+    if (!freeStart || !freeEnd || !maxHours) { setDurationWarning(''); return; }
+    const diff = (new Date(freeEnd) - new Date(freeStart)) / 3600000;
+    if (diff > maxHours) {
+      const snapped = new Date(new Date(freeStart).getTime() + maxHours * 3600000);
+      const pad = n => String(n).padStart(2, '0');
+      const snappedStr = `${snapped.getFullYear()}-${pad(snapped.getMonth()+1)}-${pad(snapped.getDate())}T${pad(snapped.getHours())}:${pad(snapped.getMinutes())}`;
+      setFreeEnd(snappedStr);
+      setDurationWarning(`Adjusted to the maximum booking duration of ${formatDuration(maxHours)}.`);
+    } else {
+      setDurationWarning('');
+    }
+  }, [freeStart, freeEnd, maxHours]);
+
+  // Navigate to adjacent day
+  function navigateDay(direction) {
+    if (!selectedDate) return;
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const current = new Date(y, m - 1, d);
+    let next = addDays(current, direction);
+    // Skip closed and past days
+    const today = startOfDay(new Date());
+    for (let i = 0; i < 60; i++) {
+      const str = localDateStr(next);
+      if (next >= today && !closedDates.has(str)) {
+        setSelectedDate(str);
+        return;
+      }
+      next = addDays(next, direction);
+    }
+  }
+
+  // Validate step 1
+  function validateStep1() {
+    const errors = {};
+    if (!firstName.trim()) errors.firstName = true;
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = true;
+    if (!resourceId) errors.resource = true;
+    if (!selectedDate) errors.date = true;
+    return errors;
+  }
+
+  // Submit step 1 — save draft
+  async function handleStep1Submit() {
+    const errors = validateStep1();
+    if (Object.keys(errors).length > 0) {
+      setSubmitAttempted(true);
+      setFieldErrors(errors);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setFieldErrors({});
+    setDraftSaveError('');
+    setSavingDraft(true);
+
+    const payload = {
+      token: currentDraftToken || undefined,
+      resource_id: resourceId,
+      preferred_date: selectedDate,
+      customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+      customer_email: email.trim(),
+      customer_phone: phone.trim() || undefined,
+      party_size: partySize,
+      notes: notes.trim() || undefined,
+      booking_mode: bookingMode,
+    };
+
+    async function attemptSave() {
+      const r = await fetch('/api/public-bookings/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error('Draft save failed');
+      return r.json();
+    }
+
+    try {
+      let data;
+      try {
+        data = await attemptSave();
+      } catch {
+        // Retry once
+        data = await attemptSave();
+      }
+      setCurrentDraftToken(data.token);
+      window.history.replaceState({}, '', `?draft=${data.token}`);
+      setFieldErrors({});
+      setStep(2);
+    } catch {
+      setDraftSaveError('We couldn\'t save your details. Please check your connection and try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
+  // Submit final booking
+  async function handleSubmit() {
+    setSubmitError('');
+    setSubmitting(true);
+
+    let startAt, endAt;
+
+    if (bookingMode === 'free' || (bookingMode === 'hybrid' && hybridTab === 'free')) {
+      if (!freeStart || !freeEnd) {
+        setSubmitError('Please select a start and end time.');
+        setSubmitting(false);
+        return;
+      }
+      startAt = new Date(freeStart).toISOString();
+      endAt = new Date(freeEnd).toISOString();
+    } else {
+      if (!selectedSlot) {
+        setSubmitError('Please select a slot.');
+        setSubmitting(false);
+        return;
+      }
+      startAt = selectedSlot.start_at;
+      endAt = selectedSlot.end_at;
+    }
+
+    try {
+      const r = await fetch('/api/public-bookings/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource_id: resourceId,
+          customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          customer_email: email.trim(),
+          customer_phone: phone.trim() || undefined,
+          party_size: partySize,
+          notes: notes.trim() || undefined,
+          start_at: startAt,
+          end_at: endAt,
+          draft_token: currentDraftToken || undefined,
+        }),
+      });
+
+      const data = await r.json();
+
+      if (!r.ok) {
+        if (r.status === 409) {
+          setSubmitError('This slot was just taken — please choose another time.');
+          setSelectedSlot(null);
+        } else {
+          setSubmitError(data?.error || 'Unable to submit booking. Please try again.');
+        }
+        return;
+      }
+
+      setSubmitSuccess(true);
+      window.history.replaceState({}, '', '/book');
+    } catch {
+      setSubmitError('Unable to submit booking. Please check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — success
+  // ---------------------------------------------------------------------------
+
+  if (submitSuccess) {
+    return (
+      <div className="text-center py-4">
+        <div className="mb-3" style={{ fontSize: 48 }}>✓</div>
+        <h3>Booking request received</h3>
+        <p className="text-muted">
+          Thanks {firstName} — we'll be in touch at {email} to confirm your booking.
+        </p>
+        <a href="/book" className="btn btn-outline-primary mt-2">Make another booking</a>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — API failure
+  // ---------------------------------------------------------------------------
+
+  if (apiError && resources.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-muted mb-3">Booking is not available right now. Please try again shortly.</p>
+        <button className="btn btn-outline-secondary" onClick={() => window.location.reload()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — step indicators
+  // ---------------------------------------------------------------------------
+
+  const stepBar = (
+    <div style={{ display: 'flex', marginBottom: 20 }}>
+      {[
+        { n: 1, label: 'Your details' },
+        { n: 2, label: bookingMode === 'free' ? 'Choose time' : bookingMode === 'hybrid' ? 'Pick slot or time' : 'Pick a slot' },
+      ].map(({ n, label }) => {
+        const isActive = step === n;
+        const isDone = step > n;
+        return (
+          <div
+            key={n}
+            onClick={() => isDone && setStep(n)}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 0', fontSize: 13, cursor: isDone ? 'pointer' : 'default',
+              borderBottom: `2px solid ${isActive ? '#206bc4' : isDone ? '#2fb344' : '#dee2e6'}`,
+              color: isActive ? '#212529' : '#868e96',
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 500,
+              background: isActive ? '#206bc4' : isDone ? '#2fb344' : 'transparent',
+              border: `1.5px solid ${isActive ? '#206bc4' : isDone ? '#2fb344' : '#adb5bd'}`,
+              color: (isActive || isDone) ? '#fff' : '#adb5bd',
+            }}>
+              {isDone ? '✓' : n}
+            </div>
+            {label}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render — step 1
+  // ---------------------------------------------------------------------------
+
+  if (step === 1) {
+    const showCards = resources.length <= 4;
+
+    return (
+      <>
+        {stepBar}
+
+        {draftExpired && (
+          <div className="alert alert-warning">
+            Your saved details have expired — please re-enter below.
+          </div>
+        )}
+
+        {submitAttempted && Object.keys(fieldErrors).some(k => fieldErrors[k] === true) && (
+          <div className="alert alert-danger">
+            Please fill in the required fields:{' '}
+            <strong>
+              {[
+                fieldErrors.firstName && 'First name',
+                fieldErrors.email && 'Email',
+                fieldErrors.resource && 'Resource',
+                fieldErrors.date && 'Preferred date',
+              ].filter(Boolean).join(', ')}
+            </strong>
+          </div>
+        )}
+
+        {draftSaveError && (
+          <div className="alert alert-danger">{draftSaveError}</div>
+        )}
+
+        {/* Resource selector */}
+        <div className="mb-3">
+          <label className="form-label fw-medium" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#868e96' }}>
+            Resource
+          </label>
+          {showCards ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+              {resources.map(r => (
+                <div
+                  key={r.id}
+                  onClick={() => { setResourceId(r.id); setSelectedDate(null); setSelectedSlot(null); }}
+                  style={{
+                    border: r.id === resourceId ? '2px solid #206bc4' : '1px solid #dee2e6',
+                    borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
+                    background: r.id === resourceId ? '#e8f0fe' : '#fff',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</div>
+                  <div style={{ fontSize: 12, color: '#868e96', marginTop: 2 }}>Capacity: {r.capacity}</div>
+                  {r.max_booking_duration_hours && (
+                    <div style={{ fontSize: 11, color: '#868e96' }}>Max: {formatDuration(Number(r.max_booking_duration_hours))}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <select
+              className={`form-select ${fieldErrors.resource ? 'is-invalid' : ''}`}
+              value={resourceId}
+              onChange={e => { setResourceId(e.target.value); setSelectedDate(null); setSelectedSlot(null); }}
+            >
+              <option value="">Select a resource</option>
+              {resources.map(r => (
+                <option key={r.id} value={r.id}>{r.name} (capacity: {r.capacity})</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <hr className="my-3" />
+
+        <div className="row g-3">
+          {/* Details form */}
+          <div className="col-md-7">
+            <div className="mb-1" style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#868e96', marginBottom: 10 }}>
+              Your details
+            </div>
+
+            <div className="row g-2 mb-2">
+              <div className="col-6">
+                <label className="form-label">First name</label>
+                <input
+                  className={`form-control ${fieldErrors.firstName ? 'is-invalid' : ''}`}
+                  type="text" value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  placeholder="Jane"
+                />
+              </div>
+              <div className="col-6">
+                <label className="form-label">Last name</label>
+                <input className="form-control" type="text" value={lastName}
+                  onChange={e => setLastName(e.target.value)} placeholder="Smith" />
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <label className="form-label">Email</label>
+              <input
+                className={`form-control ${fieldErrors.email ? 'is-invalid' : ''}`}
+                type="email" value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="jane@example.com"
+              />
+            </div>
+
+            <div className="row g-2 mb-2">
+              <div className="col-7">
+                <label className="form-label">Phone <span className="text-muted">(optional)</span></label>
+                <input className="form-control" type="text" value={phone}
+                  onChange={e => setPhone(e.target.value)} placeholder="+44 7700 900000" />
+              </div>
+              <div className="col-5">
+                <label className="form-label">Party size</label>
+                <input className="form-control" type="number" min="1"
+                  value={partySize} onChange={e => setPartySize(Math.max(1, parseInt(e.target.value) || 1))} />
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <label className="form-label">Notes <span className="text-muted">(optional)</span></label>
+              <textarea className="form-control" rows={2} value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Anything we should know…" style={{ resize: 'vertical' }} />
+            </div>
+          </div>
+
+          {/* Mini calendar */}
+          <div className="col-md-5">
+            <div className="mb-1" style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#868e96', marginBottom: 10 }}>
+              Preferred date
+            </div>
+            {calLoading ? (
+              <div className="text-muted" style={{ fontSize: 13 }}>Loading availability…</div>
+            ) : (
+              <MiniCalendar
+                selectedDate={selectedDate}
+                onSelectDate={d => { setSelectedDate(d); setFieldErrors(e => ({ ...e, date: false })); }}
+                closedDates={closedDates}
+                fullDates={fullDates}
+                hasRules={selectedResource?.has_rules || false}
+                resourceId={resourceId}
+              />
+            )}
+            {selectedDate && (
+              <div className="text-muted mt-2" style={{ fontSize: 12 }}>
+                Selected: {formatDisplayDateShort(selectedDate)}
+              </div>
+            )}
+            {fieldErrors.date && (
+              <div className="text-danger mt-1" style={{ fontSize: 12 }}>Please select a date.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-end mt-3">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleStep1Submit}
+            disabled={savingDraft}
+          >
+            {savingDraft ? 'Saving…' : 'Save & continue →'}
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — step 2
+  // ---------------------------------------------------------------------------
+
+  const slotsForDay = slots.filter(s => s.start_at?.startsWith(selectedDate));
+  const availableSlots = slotsForDay.filter(s => !s.blocked && s.is_available && new Date(s.start_at) >= new Date());
+  const hasNoSlots = !slotsLoading && slotsForDay.length === 0 && bookingMode !== 'free';
+
+  const isCustomTime = bookingMode === 'free' || (bookingMode === 'hybrid' && hybridTab === 'free');
+  const submitLabel = isCustomTime ? 'Request this time slot' : 'Submit booking request';
 
   return (
     <>
-      {/* Resource selector */}
-      <div className="mb-3">
-        <label className="form-label">Resource</label>
-        <select
-          name="resource_id"
-          className="form-select"
-          required
-          value={resourceId}
-          onChange={(e) => {
-            setResourceId(e.target.value);
-            setSelectedRange(null);
-          }}
+      {stepBar}
+
+      {submitError && (
+        <div className="alert alert-danger">{submitError}</div>
+      )}
+
+      {/* Summary bar */}
+      <div className="d-flex justify-content-between align-items-center p-3 mb-3 rounded"
+        style={{ background: '#f8f9fa', border: '1px solid #dee2e6', fontSize: 13 }}>
+        <div>
+          <span>{firstName} {lastName} &middot; {partySize} {partySize === 1 ? 'person' : 'people'} &middot; </span>
+          <strong>{selectedResource?.name}</strong>
+          <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+            {formatDisplayDateShort(selectedDate)}
+          </div>
+        </div>
+        <button type="button" className="btn btn-sm btn-outline-secondary"
+          onClick={() => { setStep(1); setSubmitError(''); }}>
+          ← Edit details
+        </button>
+      </div>
+
+      {/* Day navigation */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <strong style={{ fontSize: 14 }}>{formatDisplayDate(selectedDate)}</strong>
+        <div className="d-flex gap-2">
+          <button type="button" className="btn btn-sm btn-outline-secondary"
+            onClick={() => navigateDay(-1)}>← Prev day</button>
+          <button type="button" className="btn btn-sm btn-outline-secondary"
+            onClick={() => navigateDay(1)}>Next day →</button>
+        </div>
+      </div>
+
+      {/* Availability only */}
+      {bookingMode === 'availability_only' && (
+        <>
+          {slotsLoading && <div className="text-muted" style={{ fontSize: 13 }}>Loading slots…</div>}
+          {slotsError && <div className="alert alert-danger">{slotsError}</div>}
+          {hasNoSlots && (
+            <div className="text-center p-4 rounded mb-3" style={{ background: '#f8f9fa', border: '1px solid #dee2e6' }}>
+              <p className="text-muted mb-3">No slots available on this day.</p>
+              <div className="d-flex gap-2 justify-content-center">
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigateDay(-1)}>← Previous day</button>
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigateDay(1)}>Next available day →</button>
+              </div>
+            </div>
+          )}
+          {!slotsLoading && !hasNoSlots && (
+            <SlotTable
+              slots={slotsForDay}
+              selectedSlot={selectedSlot}
+              onSelectSlot={setSelectedSlot}
+              capacity={selectedResource?.capacity || 1}
+            />
+          )}
+        </>
+      )}
+
+      {/* Free book */}
+      {bookingMode === 'free' && (
+        <>
+          {maxHours && (
+            <div className="alert alert-info py-2 mb-3" style={{ fontSize: 13 }}>
+              Max booking duration: <strong>{formatDuration(maxHours)}</strong>
+              {maxHours >= 24 && <span className="text-muted"> &middot; End date can be a later day for multi-day bookings.</span>}
+            </div>
+          )}
+
+          <div className="row g-2 mb-2">
+            <div className="col-6">
+              <label className="form-label">Start</label>
+              <input className="form-control" type="datetime-local" value={freeStart}
+                onChange={e => setFreeStart(e.target.value)} />
+            </div>
+            <div className="col-6">
+              <label className="form-label">End</label>
+              <input className="form-control" type="datetime-local" value={freeEnd}
+                min={freeStart}
+                onChange={e => setFreeEnd(e.target.value)} />
+            </div>
+          </div>
+
+          {freeStart && freeEnd && (
+            <div className="text-muted mb-2" style={{ fontSize: 12 }}>
+              Duration: {formatDuration((new Date(freeEnd) - new Date(freeStart)) / 3600000)}
+            </div>
+          )}
+
+          {durationWarning && (
+            <div className="alert alert-warning py-2 mb-2" style={{ fontSize: 13 }}>{durationWarning}</div>
+          )}
+
+          <div className="text-muted mb-3" style={{ fontSize: 12 }}>
+            Or drag on the calendar below to set your time.
+          </div>
+
+          <div className="card mb-3">
+            <div className="card-body p-0">
+              <FullCalendar
+                plugins={[timeGridPlugin, interactionPlugin]}
+                initialView="timeGridDay"
+                initialDate={selectedDate || localDateStr(new Date())}
+                selectable={true}
+                editable={false}
+                nowIndicator
+                height="auto"
+                slotMinTime="06:00:00"
+                slotMaxTime="23:00:00"
+                headerToolbar={{ left: '', center: 'title', right: '' }}
+                select={(info) => {
+                  const pad = n => String(n).padStart(2, '0');
+                  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                  setFreeStart(fmt(info.start));
+                  setFreeEnd(fmt(info.end));
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Hybrid */}
+      {bookingMode === 'hybrid' && (
+        <>
+          <div className="btn-group mb-3" role="group">
+            <button
+              type="button"
+              className={`btn btn-sm ${hybridTab === 'slot' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setHybridTab('slot')}
+            >
+              Pick a slot
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${hybridTab === 'free' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setHybridTab('free')}
+            >
+              Custom time <span style={{ fontSize: 10, opacity: 0.7 }}>(advanced)</span>
+            </button>
+          </div>
+
+          {hybridTab === 'slot' && (
+            <>
+              {slotsLoading && <div className="text-muted" style={{ fontSize: 13 }}>Loading slots…</div>}
+              {hasNoSlots && (
+                <div className="text-center p-4 rounded mb-3" style={{ background: '#f8f9fa', border: '1px solid #dee2e6' }}>
+                  <p className="text-muted mb-3">No slots available on this day.</p>
+                  <div className="d-flex gap-2 justify-content-center">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigateDay(-1)}>← Previous day</button>
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigateDay(1)}>Next available day →</button>
+                  </div>
+                </div>
+              )}
+              {!slotsLoading && !hasNoSlots && (
+                <SlotTable
+                  slots={slotsForDay}
+                  selectedSlot={selectedSlot}
+                  onSelectSlot={setSelectedSlot}
+                  capacity={selectedResource?.capacity || 1}
+                />
+              )}
+            </>
+          )}
+
+          {hybridTab === 'free' && (
+            <>
+              <div className="alert alert-info py-2 mb-3" style={{ fontSize: 13 }}>
+                Custom times require admin approval before confirmation.
+              </div>
+              {maxHours && (
+                <div className="alert alert-info py-2 mb-3" style={{ fontSize: 13 }}>
+                  Max booking duration: <strong>{formatDuration(maxHours)}</strong>
+                </div>
+              )}
+              <div className="row g-2 mb-2">
+                <div className="col-6">
+                  <label className="form-label">Start</label>
+                  <input className="form-control" type="datetime-local" value={freeStart}
+                    onChange={e => setFreeStart(e.target.value)} />
+                </div>
+                <div className="col-6">
+                  <label className="form-label">End</label>
+                  <input className="form-control" type="datetime-local" value={freeEnd}
+                    min={freeStart} onChange={e => setFreeEnd(e.target.value)} />
+                </div>
+              </div>
+              {durationWarning && (
+                <div className="alert alert-warning py-2 mb-2" style={{ fontSize: 13 }}>{durationWarning}</div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* Footer */}
+      <hr className="mt-3" />
+      <div className="d-flex justify-content-end gap-2">
+        <button type="button" className="btn btn-outline-secondary"
+          onClick={() => { setStep(1); setSubmitError(''); }}>
+          ← Back
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSubmit}
+          disabled={submitting}
         >
-          <option value="">Select a resource</option>
-          {resources.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name} (capacity: {r.capacity})
-            </option>
-          ))}
-        </select>
+          {submitting ? 'Submitting…' : submitLabel}
+        </button>
       </div>
-
-      {/* Hidden inputs — populated when a slot is clicked */}
-      <input type="hidden" name="start_at_local" value={selectedRange?.start || ''} />
-      <input type="hidden" name="end_at_local"   value={selectedRange?.end   || ''} />
-
-      {/* Status messages */}
-      {error         ? <div className="alert alert-danger">{error}</div> : null}
-      {loading       ? <div className="alert alert-secondary">Loading availability…</div> : null}
-      {statusMessage ? <div className={`alert alert-${statusMessage.type}`}>{statusMessage.text}</div> : null}
-
-      {/* Selected slot confirmation */}
-      {selectedRange ? (
-        <div className="alert alert-success d-flex justify-content-between align-items-center">
-          <span>
-            Selected: <strong>{selectedRange.start.replace('T', ' ')}</strong>
-            {' → '}
-            <strong>{selectedRange.end.replace('T', ' ')}</strong>
-            {selectedResource ? ` · ${selectedResource.name}` : ''}
-          </span>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => setSelectedRange(null)}
-          >
-            Clear
-          </button>
-        </div>
-      ) : null}
-
-      {/* Calendar */}
-      <div className="card mb-4">
-        <div className="card-body p-0">
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
-            initialDate={rangeFrom}
-            validRange={{ start: rangeFromStr, end: rangeToStr }}
-            headerToolbar={{
-              left:   'prev,next today',
-              center: 'title',
-              right:  'timeGridWeek,timeGridDay',
-            }}
-            slotMinTime="06:00:00"
-            slotMaxTime="23:00:00"
-            selectable={false}
-            editable={false}
-            nowIndicator
-            height="auto"
-            eventClick={handleEventClick}
-            eventCursor="pointer"
-            events={events}
-            // Style closed-day columns visibly greyed out in day/week view
-            dayCellClassNames={(arg) => {
-              const dateStr = localDateStr(arg.date);
-              return closedDates.has(dateStr) ? ['day-unavailable'] : [];
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Legend */}
-      {resourceId && !loading ? (
-        <div className="d-flex gap-3 mb-3 flex-wrap">
-          <span className="d-flex align-items-center gap-1">
-            <span style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#2fb344', display: 'inline-block' }} />
-            <small className="text-secondary">Available</small>
-          </span>
-          <span className="d-flex align-items-center gap-1">
-            <span style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#c8c8c8', display: 'inline-block' }} />
-            <small className="text-secondary">Fully booked</small>
-          </span>
-          <span className="d-flex align-items-center gap-1">
-            <span style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#ffd5d5', display: 'inline-block' }} />
-            <small className="text-secondary">Unavailable</small>
-          </span>
-          <span className="d-flex align-items-center gap-1">
-            <span style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#f0f0f0', border: '1px solid #ddd', display: 'inline-block' }} />
-            <small className="text-secondary">Closed</small>
-          </span>
-        </div>
-      ) : null}
     </>
   );
 }

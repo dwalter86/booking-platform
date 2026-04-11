@@ -12,6 +12,7 @@ pre {
 .table-responsive {
   overflow-x: auto;
 }
+
 /* Grey out closed days in the booking calendar */
 .day-unavailable {
   background-color: #f5f5f5 !important;
@@ -32,4 +33,40 @@ pre {
 .fc .slot-full {
   cursor: default;
   pointer-events: none;
+}
+
+/* Mini calendar — fully booked days */
+.day-full {
+  color: #bbb !important;
+  text-decoration: line-through;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* Mini calendar — selected day */
+.day-selected {
+  background-color: #206bc4;
+  color: #fff !important;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Slot table — blocked row */
+.slot-blocked td {
+  background-color: #fff9f9;
+}
+
+/* Slot table — full row */
+.slot-row-full td {
+  opacity: 0.55;
+}
+
+/* Slot table — selected row */
+.slot-row-selected td {
+  background-color: #f0f7ff;
+}
+
+/* Free book — drag calendar open window */
+.fc .slot-open {
+  cursor: crosshair;
 }
