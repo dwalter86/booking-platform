@@ -2,6 +2,7 @@ import Link from 'next/link';
 import LayoutShell from '../../../components/LayoutShell';
 import AvailabilityRulesList from '../../../components/AvailabilityRulesList';
 import AvailabilityExceptionsList from '../../../components/AvailabilityExceptionsList';
+import UnavailabilityBlocksList from '../../../components/UnavailabilityBlocksList';
 import { apiFetch, requireAuth } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -39,13 +40,17 @@ export default async function ResourcesPage({ searchParams }) {
 
   const selectedResourceId = searchParams?.resource_id || '';
   const isAdding = searchParams?.add === '1';
-  const isAvailabilityPanel = searchParams?.panel === 'availability';
+  const panel = searchParams?.panel || '';
+  const isAvailabilityPanel = panel === 'availability';
+  const isUnavailabilityPanel = panel === 'unavailability';
   const selectedResource = Array.isArray(rows)
     ? rows.find((r) => r.id === selectedResourceId) || null
     : null;
 
   let rules = [];
   let exceptions = [];
+  let blocks = [];
+
   if (isAvailabilityPanel && selectedResource) {
     const [rulesRes, exceptionsRes] = await Promise.all([
       apiFetch(`/api/availability-rules?resource_id=${selectedResourceId}`),
@@ -55,8 +60,18 @@ export default async function ResourcesPage({ searchParams }) {
     exceptions = exceptionsRes.ok ? await exceptionsRes.json() : [];
   }
 
-  const returnBase = isAvailabilityPanel && selectedResourceId
+  if (isUnavailabilityPanel && selectedResource) {
+    const blocksRes = await apiFetch('/api/unavailability-blocks');
+    const allBlocks = blocksRes.ok ? await blocksRes.json() : [];
+    blocks = allBlocks.filter((b) => b.resource_id === selectedResourceId);
+  }
+
+  const availReturnBase = isAvailabilityPanel && selectedResourceId
     ? `/resources?resource_id=${selectedResourceId}&panel=availability`
+    : '';
+
+  const unavailReturnBase = isUnavailabilityPanel && selectedResourceId
+    ? `/resources?resource_id=${selectedResourceId}&panel=unavailability`
     : '';
 
   const addResourceButton = (
@@ -93,10 +108,12 @@ export default async function ResourcesPage({ searchParams }) {
                       <td colSpan="5" className="text-secondary">No resources found. Click Add resource to create one.</td>
                     </tr>
                   ) : rows.map((row) => {
-                    const isSelected = row.id === selectedResourceId && !isAvailabilityPanel;
+                    const isEditSelected = row.id === selectedResourceId && !panel;
                     const isAvailSelected = row.id === selectedResourceId && isAvailabilityPanel;
+                    const isUnavailSelected = row.id === selectedResourceId && isUnavailabilityPanel;
+                    const isRowActive = isEditSelected || isAvailSelected || isUnavailSelected;
                     return (
-                      <tr key={row.id} className={isSelected || isAvailSelected ? 'table-active' : undefined}>
+                      <tr key={row.id} className={isRowActive ? 'table-active' : undefined}>
                         <td>
                           <div>{row.name}</div>
                           <div className="text-secondary small">{row.slug}</div>
@@ -109,9 +126,9 @@ export default async function ResourcesPage({ searchParams }) {
                         <td>{row.capacity}</td>
                         <td>{bookingModeLabel(row.booking_mode)}</td>
                         <td>
-                          <div className="d-flex gap-2">
+                          <div className="d-flex gap-1 flex-wrap">
                             <Link
-                              className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
+                              className={`btn btn-sm ${isEditSelected ? 'btn-primary' : 'btn-outline-primary'}`}
                               href={`/resources?resource_id=${row.id}`}
                             >
                               Edit
@@ -121,6 +138,12 @@ export default async function ResourcesPage({ searchParams }) {
                               href={`/resources?resource_id=${row.id}&panel=availability`}
                             >
                               Availability
+                            </Link>
+                            <Link
+                              className={`btn btn-sm ${isUnavailSelected ? 'btn-warning' : 'btn-outline-warning'}`}
+                              href={`/resources?resource_id=${row.id}&panel=unavailability`}
+                            >
+                              Unavailability
                             </Link>
                           </div>
                         </td>
@@ -141,17 +164,19 @@ export default async function ResourcesPage({ searchParams }) {
                   ? 'New resource'
                   : isAvailabilityPanel && selectedResource
                     ? `Availability — ${selectedResource.name}`
-                    : selectedResource
-                      ? selectedResource.name
-                      : 'Resource details'}
+                    : isUnavailabilityPanel && selectedResource
+                      ? `Unavailability — ${selectedResource.name}`
+                      : selectedResource
+                        ? selectedResource.name
+                        : 'Resource details'}
               </h3>
-              {selectedResource && !isAvailabilityPanel && (
+              {selectedResource && !panel && (
                 <form action="/resource-actions/delete" method="post">
                   <input type="hidden" name="id" value={selectedResource.id} />
                   <button className="btn btn-sm btn-outline-danger" type="submit">Delete</button>
                 </form>
               )}
-              {isAvailabilityPanel && selectedResource && (
+              {(isAvailabilityPanel || isUnavailabilityPanel) && selectedResource && (
                 <Link className="btn btn-sm btn-outline-secondary" href={`/resources?resource_id=${selectedResource.id}`}>
                   Edit resource
                 </Link>
@@ -225,12 +250,11 @@ export default async function ResourcesPage({ searchParams }) {
                 </form>
               ) : isAvailabilityPanel && selectedResource ? (
                 <div className="d-flex flex-column gap-4">
-                  {/* Add rule form */}
                   <div>
                     <h4 className="mb-3">Add availability rule</h4>
                     <form action="/availability-rule-actions/create" method="post">
                       <input type="hidden" name="resource_id" value={selectedResource.id} />
-                      <input type="hidden" name="return_base" value={returnBase} />
+                      <input type="hidden" name="return_base" value={availReturnBase} />
                       <div className="row g-2">
                         <div className="col-12">
                           <label className="form-label">Day of week</label>
@@ -269,20 +293,18 @@ export default async function ResourcesPage({ searchParams }) {
                     </form>
                   </div>
 
-                  {/* Rules list */}
                   <div>
                     <h4 className="mb-3">Weekly schedule</h4>
-                    <AvailabilityRulesList rules={rules} resourceId={selectedResource.id} returnBase={returnBase} />
+                    <AvailabilityRulesList rules={rules} resourceId={selectedResource.id} returnBase={availReturnBase} />
                   </div>
 
                   <hr className="my-0" />
 
-                  {/* Add exception form */}
                   <div>
                     <h4 className="mb-3">Add date exception</h4>
                     <form action="/availability-exception-actions/create" method="post">
                       <input type="hidden" name="resource_id" value={selectedResource.id} />
-                      <input type="hidden" name="return_base" value={returnBase} />
+                      <input type="hidden" name="return_base" value={availReturnBase} />
                       <div className="row g-2">
                         <div className="col-12">
                           <label className="form-label">Date</label>
@@ -313,10 +335,41 @@ export default async function ResourcesPage({ searchParams }) {
                     </form>
                   </div>
 
-                  {/* Exceptions list */}
                   <div>
                     <h4 className="mb-3">Date exceptions</h4>
-                    <AvailabilityExceptionsList exceptions={exceptions} resourceId={selectedResource.id} returnBase={returnBase} />
+                    <AvailabilityExceptionsList exceptions={exceptions} resourceId={selectedResource.id} returnBase={availReturnBase} />
+                  </div>
+                </div>
+              ) : isUnavailabilityPanel && selectedResource ? (
+                <div className="d-flex flex-column gap-4">
+                  <div>
+                    <h4 className="mb-3">Add unavailability block</h4>
+                    <form action="/unavailability-actions/create" method="post">
+                      <input type="hidden" name="resource_id" value={selectedResource.id} />
+                      <input type="hidden" name="return_base" value={unavailReturnBase} />
+                      <div className="row g-2">
+                        <div className="col-6">
+                          <label className="form-label">Start</label>
+                          <input className="form-control" type="datetime-local" name="start_at" required />
+                        </div>
+                        <div className="col-6">
+                          <label className="form-label">End</label>
+                          <input className="form-control" type="datetime-local" name="end_at" required />
+                        </div>
+                        <div className="col-12">
+                          <label className="form-label">Reason</label>
+                          <textarea className="form-control" name="reason" rows="2" placeholder="Maintenance, private use, etc." />
+                        </div>
+                        <div className="col-12">
+                          <button className="btn btn-primary btn-sm" type="submit">Add block</button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div>
+                    <h4 className="mb-3">Existing blocks</h4>
+                    <UnavailabilityBlocksList blocks={blocks} resources={rows} returnBase={unavailReturnBase} />
                   </div>
                 </div>
               ) : (

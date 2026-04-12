@@ -25,8 +25,12 @@ export async function POST(request) {
     return NextResponse.redirect(new URL('/login', baseUrl), 302);
   }
 
+  const returnBase = String(form.get('return_base') || '').trim();
+  const redirectBase = returnBase || '/unavailability-blocks';
+  const sep = returnBase ? '&' : '?';
+
   if (!id) {
-    return NextResponse.redirect(new URL('/unavailability-blocks?error=Missing%20unavailability%20block%20id', baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep}error=Missing%20unavailability%20block%20id`, baseUrl), 302);
   }
 
   try {
@@ -42,11 +46,11 @@ export async function POST(request) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       const message = encodeURIComponent(data?.error || 'Unable to delete unavailability block');
-      return NextResponse.redirect(new URL(`/unavailability-blocks?error=${message}`, baseUrl), 302);
+      return NextResponse.redirect(new URL(`${redirectBase}${sep}error=${message}`, baseUrl), 302);
     }
   } catch {
-    return NextResponse.redirect(new URL('/unavailability-blocks?error=API%20unavailable', baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep}error=API%20unavailable`, baseUrl), 302);
   }
 
-  return NextResponse.redirect(new URL('/unavailability-blocks?success=Unavailability%20block%20deleted', baseUrl), 302);
+  return NextResponse.redirect(new URL(`${redirectBase}${sep}success=Unavailability%20block%20deleted`, baseUrl), 302);
 }

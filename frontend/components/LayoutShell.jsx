@@ -6,7 +6,6 @@ const navItems = [
   ['Resources', '/resources'],
   ['Bookings', '/bookings'],
   ['Calendar', '/calendar'],
-  ['Unavailability', '/unavailability-blocks'],
   ['Admin Users', '/admin-users'],
   ['Plans', '/plans'],
   ['Audit Log', '/audit-log'],

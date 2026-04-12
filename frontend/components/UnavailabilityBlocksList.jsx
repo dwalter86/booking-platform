@@ -19,7 +19,7 @@ function asValue(value, fallback = '') {
   return value === null || value === undefined ? fallback : String(value);
 }
 
-export default function UnavailabilityBlocksList({ blocks, resources }) {
+export default function UnavailabilityBlocksList({ blocks, resources, returnBase }) {
   if (!Array.isArray(blocks) || !blocks.length) {
     return <p className="text-secondary mb-0">No unavailability blocks have been created yet.</p>;
   }
@@ -38,12 +38,14 @@ export default function UnavailabilityBlocksList({ blocks, resources }) {
               </div>
               <form action="/unavailability-actions/delete" method="post">
                 <input type="hidden" name="id" value={block.id} />
+                {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
                 <button className="btn btn-outline-danger" type="submit">Delete</button>
               </form>
             </div>
 
             <form action="/unavailability-actions/update" method="post">
               <input type="hidden" name="id" value={block.id} />
+              {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
               <div className="row g-3">
                 <div className="col-md-4">
                   <label className="form-label">Resource</label>

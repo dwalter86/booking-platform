@@ -24,6 +24,10 @@ export async function POST(request) {
     return NextResponse.redirect(new URL('/login', baseUrl), 302);
   }
 
+  const returnBase = String(form.get('return_base') || '').trim();
+  const redirectBase = returnBase || '/unavailability-blocks';
+  const sep = returnBase ? '&' : '?';
+
   const payload = {
     resource_id: String(form.get('resource_id') || '').trim(),
     start_at: String(form.get('start_at') || '').trim(),
@@ -46,11 +50,11 @@ export async function POST(request) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       const message = encodeURIComponent(data?.error || 'Unable to create unavailability block');
-      return NextResponse.redirect(new URL(`/unavailability-blocks?error=${message}`, baseUrl), 302);
+      return NextResponse.redirect(new URL(`${redirectBase}${sep}error=${message}`, baseUrl), 302);
     }
   } catch {
-    return NextResponse.redirect(new URL('/unavailability-blocks?error=API%20unavailable', baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep}error=API%20unavailable`, baseUrl), 302);
   }
 
-  return NextResponse.redirect(new URL('/unavailability-blocks?success=Unavailability%20block%20created', baseUrl), 302);
+  return NextResponse.redirect(new URL(`${redirectBase}${sep}success=Unavailability%20block%20created`, baseUrl), 302);
 }
