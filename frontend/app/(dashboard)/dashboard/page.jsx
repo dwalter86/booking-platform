@@ -1,10 +1,38 @@
 import LayoutShell from '../../../components/LayoutShell';
 import DataCard from '../../../components/DataCard';
 import FadeOut from '../../../components/FadeOut';
+import DashboardCalendarClient from '../../../components/DashboardCalendarClient';
 import { apiFetch, requireAuth } from '../../../lib/auth';
 import { formatDateTime } from '../../../lib/format';
 
 export const dynamic = 'force-dynamic';
+
+function DonutChart({ count, capacity }) {
+  const r = 26;
+  const cx = 36;
+  const cy = 36;
+  const strokeWidth = 8;
+  const circumference = 2 * Math.PI * r;
+  const ratio = capacity > 0 ? Math.min(count / capacity, 1) : 0;
+  const filled = ratio * circumference;
+
+  return (
+    <svg width="72" height="72" viewBox="0 0 72 72" style={{ flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e2a78" strokeWidth={strokeWidth} />
+      {filled > 0 && (
+        <circle
+          cx={cx} cy={cy} r={r}
+          fill="none"
+          stroke="#4ea8ff"
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${filled} ${circumference}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`}
+        />
+      )}
+    </svg>
+  );
+}
 
 const STATUS_BADGE = {
   confirmed:   'bg-success',
@@ -17,11 +45,12 @@ const STATUS_BADGE = {
 
 async function load() {
   await requireAuth();
-  const [resourcesRes, bookingsRes, plansRes, tenantRes] = await Promise.all([
+  const [resourcesRes, bookingsRes, plansRes, tenantRes, blocksRes] = await Promise.all([
     apiFetch('/api/resources'),
-    apiFetch('/api/bookings?per_page=5'),
+    apiFetch('/api/bookings'),
     apiFetch('/api/plans/entitlements'),
     apiFetch('/api/tenant/profile'),
+    apiFetch('/api/unavailability-blocks'),
   ]);
 
   const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
@@ -30,6 +59,8 @@ async function load() {
   const resources    = Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || []);
   const bookings     = Array.isArray(bookingsRaw)  ? bookingsRaw  : (bookingsRaw.data  || []);
   const totalBookings = bookingsRaw?.pagination?.total_count ?? bookings.length;
+  const blocksRaw    = blocksRes.ok ? await blocksRes.json() : [];
+  const unavailabilityBlocks = Array.isArray(blocksRaw) ? blocksRaw : (blocksRaw.data || []);
   const entitlements = plansRes.ok ? await plansRes.json() : {};
   const tenant       = tenantRes.ok ? await tenantRes.json() : null;
 
@@ -40,7 +71,7 @@ async function load() {
     rules = Array.isArray(rulesRaw) ? rulesRaw : (rulesRaw.data || []);
   }
 
-  return { resources, bookings, totalBookings, entitlements, tenant, rules };
+  return { resources, bookings, totalBookings, entitlements, tenant, rules, unavailabilityBlocks };
 }
 
 function OnboardingChecklist({ tenant, resources, rules }) {
@@ -148,7 +179,7 @@ function OnboardingChecklist({ tenant, resources, rules }) {
 }
 
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, entitlements, tenant, rules } = await load();
+  const { resources, bookings, totalBookings, entitlements, tenant, rules, unavailabilityBlocks } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
@@ -156,6 +187,14 @@ export default async function DashboardPage() {
   const bookingComplete  = Boolean(tenant?.public_booking_enabled);
   const allComplete      = profileComplete && resourceComplete && rulesComplete && bookingComplete;
   const hideChecklist    = allComplete && totalBookings > 5;
+
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  const bookingsTodayByResource = {};
+  for (const b of bookings) {
+    if (b.start_at?.slice(0, 10) === todayUTC) {
+      bookingsTodayByResource[b.resource_id] = (bookingsTodayByResource[b.resource_id] || 0) + 1;
+    }
+  }
 
   return (
     <LayoutShell title="Dashboard">
@@ -165,6 +204,43 @@ export default async function DashboardPage() {
           resources={resources}
           rules={rules}
         />
+      )}
+
+      <div className="row mb-4">
+        <div className="col-12">
+          <DashboardCalendarClient bookings={bookings} unavailabilityBlocks={unavailabilityBlocks} />
+        </div>
+      </div>
+
+      {resources.length > 0 && (
+        <div className="d-flex gap-3 mb-4" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
+          {resources.map((resource) => {
+            const count = bookingsTodayByResource[resource.id] || 0;
+            return (
+              <a
+                key={resource.id}
+                href={`/bookings?resource_id=${resource.id}&date_from=${todayUTC}&date_to=${todayUTC}&filter=1`}
+                className="text-decoration-none"
+                style={{ flexShrink: 0 }}
+              >
+                <div className="card mb-0" style={{ minWidth: '210px' }}>
+                  <div className="card-body d-flex align-items-center gap-3">
+                    <DonutChart count={count} capacity={resource.capacity || 0} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="fw-medium text-truncate mb-1">
+                        {resource.name}
+                      </div>
+                      <div className="d-flex align-items-baseline gap-1">
+                        <div className="h2 mb-0">{count}</div>
+                        <div className="text-secondary small">bookings today</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
       )}
 
       <div className="row row-deck row-cards">
@@ -233,7 +309,7 @@ export default async function DashboardPage() {
                 <tbody>
                   {bookings.length === 0 ? (
                     <tr><td colSpan="5" className="text-secondary">No bookings yet.</td></tr>
-                  ) : bookings.map((row) => (
+                  ) : bookings.slice(0, 5).map((row) => (
                     <tr key={row.id}>
                       <td className="text-monospace">{row.reference_code || row.id}</td>
                       <td>{row.customer_name || <span className="text-secondary">—</span>}</td>
