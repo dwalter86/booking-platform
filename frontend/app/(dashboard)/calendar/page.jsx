@@ -25,7 +25,7 @@ export default async function CalendarPage() {
 
   const error = resourcesResult.error || bookingsResult.error || blocksResult.error;
   const resources = Array.isArray(resourcesResult.data) ? resourcesResult.data : [];
-  const bookings = Array.isArray(bookingsResult.data) ? bookingsResult.data : [];
+  const bookings = Array.isArray(bookingsResult.data?.data) ? bookingsResult.data.data : [];
   const unavailabilityBlocks = Array.isArray(blocksResult.data) ? blocksResult.data : [];
 
   return (
