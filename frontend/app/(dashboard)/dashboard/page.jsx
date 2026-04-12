@@ -7,33 +7,6 @@ import { formatDateTime } from '../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
-function DonutChart({ count, capacity }) {
-  const r = 26;
-  const cx = 36;
-  const cy = 36;
-  const strokeWidth = 8;
-  const circumference = 2 * Math.PI * r;
-  const ratio = capacity > 0 ? Math.min(count / capacity, 1) : 0;
-  const filled = ratio * circumference;
-
-  return (
-    <svg width="72" height="72" viewBox="0 0 72 72" style={{ flexShrink: 0 }}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e2a78" strokeWidth={strokeWidth} />
-      {filled > 0 && (
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke="#4ea8ff"
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${filled} ${circumference}`}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${cx} ${cy})`}
-        />
-      )}
-    </svg>
-  );
-}
-
 const STATUS_BADGE = {
   confirmed:   'bg-success',
   cancelled:   'bg-danger',
@@ -45,10 +18,9 @@ const STATUS_BADGE = {
 
 async function load() {
   await requireAuth();
-  const [resourcesRes, bookingsRes, plansRes, tenantRes, blocksRes] = await Promise.all([
+  const [resourcesRes, bookingsRes, tenantRes, blocksRes] = await Promise.all([
     apiFetch('/api/resources'),
     apiFetch('/api/bookings'),
-    apiFetch('/api/plans/entitlements'),
     apiFetch('/api/tenant/profile'),
     apiFetch('/api/unavailability-blocks'),
   ]);
@@ -61,17 +33,21 @@ async function load() {
   const totalBookings = bookingsRaw?.pagination?.total_count ?? bookings.length;
   const blocksRaw    = blocksRes.ok ? await blocksRes.json() : [];
   const unavailabilityBlocks = Array.isArray(blocksRaw) ? blocksRaw : (blocksRaw.data || []);
-  const entitlements = plansRes.ok ? await plansRes.json() : {};
   const tenant       = tenantRes.ok ? await tenantRes.json() : null;
 
-  let rules = [];
+  const allRulesByResource = {};
   if (resources.length > 0) {
-    const rulesRes = await apiFetch(`/api/availability-rules?resource_id=${resources[0].id}`);
-    const rulesRaw = rulesRes.ok ? await rulesRes.json() : [];
-    rules = Array.isArray(rulesRaw) ? rulesRaw : (rulesRaw.data || []);
+    const rulesResults = await Promise.all(
+      resources.map(r => apiFetch(`/api/availability-rules?resource_id=${r.id}`))
+    );
+    for (let i = 0; i < resources.length; i++) {
+      const raw = rulesResults[i].ok ? await rulesResults[i].json() : [];
+      allRulesByResource[resources[i].id] = Array.isArray(raw) ? raw : (raw.data || []);
+    }
   }
+  const rules = allRulesByResource[resources[0]?.id] || [];
 
-  return { resources, bookings, totalBookings, entitlements, tenant, rules, unavailabilityBlocks };
+  return { resources, bookings, totalBookings, tenant, rules, unavailabilityBlocks, allRulesByResource };
 }
 
 function OnboardingChecklist({ tenant, resources, rules }) {
@@ -179,7 +155,7 @@ function OnboardingChecklist({ tenant, resources, rules }) {
 }
 
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, entitlements, tenant, rules, unavailabilityBlocks } = await load();
+  const { resources, bookings, totalBookings, tenant, rules, unavailabilityBlocks, allRulesByResource } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
@@ -187,14 +163,6 @@ export default async function DashboardPage() {
   const bookingComplete  = Boolean(tenant?.public_booking_enabled);
   const allComplete      = profileComplete && resourceComplete && rulesComplete && bookingComplete;
   const hideChecklist    = allComplete && totalBookings > 5;
-
-  const todayUTC = new Date().toISOString().slice(0, 10);
-  const bookingsTodayByResource = {};
-  for (const b of bookings) {
-    if (b.start_at?.slice(0, 10) === todayUTC) {
-      bookingsTodayByResource[b.resource_id] = (bookingsTodayByResource[b.resource_id] || 0) + 1;
-    }
-  }
 
   return (
     <LayoutShell title="Dashboard">
@@ -208,88 +176,11 @@ export default async function DashboardPage() {
 
       <div className="row mb-4">
         <div className="col-12">
-          <DashboardCalendarClient bookings={bookings} unavailabilityBlocks={unavailabilityBlocks} />
+          <DashboardCalendarClient bookings={bookings} unavailabilityBlocks={unavailabilityBlocks} resources={resources} availabilityRulesByResource={allRulesByResource} />
         </div>
       </div>
 
-      {resources.length > 0 && (
-        <div className="d-flex gap-3 mb-4" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
-          {resources.map((resource) => {
-            const count = bookingsTodayByResource[resource.id] || 0;
-            return (
-              <a
-                key={resource.id}
-                href={`/bookings?resource_id=${resource.id}&date_from=${todayUTC}&date_to=${todayUTC}&filter=1`}
-                className="text-decoration-none"
-                style={{ flexShrink: 0 }}
-              >
-                <div className="card mb-0" style={{ minWidth: '210px' }}>
-                  <div className="card-body d-flex align-items-center gap-3">
-                    <DonutChart count={count} capacity={resource.capacity || 0} />
-                    <div style={{ minWidth: 0 }}>
-                      <div className="fw-medium text-truncate mb-1">
-                        {resource.name}
-                      </div>
-                      <div className="d-flex align-items-baseline gap-1">
-                        <div className="h2 mb-0">{count}</div>
-                        <div className="text-secondary small">bookings today</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            );
-          })}
-        </div>
-      )}
-
       <div className="row row-deck row-cards">
-        <div className="col-md-4">
-          <DataCard title="Resources">
-            <div className="d-flex align-items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-lg text-muted" width="32" height="32" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M3 21l18 0" /><path d="M9 8l1 0" /><path d="M9 12l1 0" /><path d="M9 16l1 0" /><path d="M14 8l1 0" /><path d="M14 12l1 0" /><path d="M14 16l1 0" />
-                <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16" />
-              </svg>
-              <div>
-                <div className="h1 mb-0">{resources.length}</div>
-                <div className="text-secondary small">bookable assets</div>
-              </div>
-            </div>
-          </DataCard>
-        </div>
-        <div className="col-md-4">
-          <DataCard title="Bookings">
-            <div className="d-flex align-items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-lg text-muted" width="32" height="32" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" />
-                <path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" />
-                <path d="M8 15l2 0" /><path d="M14 15l2 0" />
-              </svg>
-              <div>
-                <div className="h1 mb-0">{totalBookings}</div>
-                <div className="text-secondary small">total bookings</div>
-              </div>
-            </div>
-          </DataCard>
-        </div>
-        <div className="col-md-4">
-          <DataCard title="Current plan">
-            <div className="d-flex align-items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-lg text-muted" width="32" height="32" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9z" />
-                <path d="M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-              <div>
-                <div className="h3 mb-0">{entitlements?.subscription?.plan_name || 'Unknown'}</div>
-                <div className="text-secondary small"><a href="/plans">View plan details</a></div>
-              </div>
-            </div>
-          </DataCard>
-        </div>
         <div className="col-12">
           <DataCard
             title="Recent bookings"

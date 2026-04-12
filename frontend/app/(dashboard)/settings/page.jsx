@@ -11,13 +11,19 @@ function asValue(value, fallback = '') {
 export default async function SettingsPage({ searchParams }) {
   await requireAuth();
 
-  const [tenantRes, entitlementRes] = await Promise.all([
+  const [tenantRes, entitlementRes, resourcesRes, bookingsRes] = await Promise.all([
     apiFetch('/api/tenant/profile'),
     apiFetch('/api/entitlement'),
+    apiFetch('/api/resources'),
+    apiFetch('/api/bookings'),
   ]);
 
   const tenant      = tenantRes.ok      ? await tenantRes.json()      : null;
   const entitlement = entitlementRes.ok ? await entitlementRes.json() : null;
+  const resourcesRaw  = resourcesRes.ok  ? await resourcesRes.json()  : [];
+  const bookingsRaw   = bookingsRes.ok   ? await bookingsRes.json()   : {};
+  const resourceCount = (Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || [])).length;
+  const totalBookings = bookingsRaw?.pagination?.total_count ?? (Array.isArray(bookingsRaw) ? bookingsRaw.length : (bookingsRaw.data?.length ?? 0));
 
   const success = searchParams?.success || '';
   const error   = searchParams?.error   || '';
@@ -34,6 +40,55 @@ export default async function SettingsPage({ searchParams }) {
     <LayoutShell title="Settings">
       {success ? <div className="alert alert-success mb-4">{success}</div> : null}
       {error   ? <div className="alert alert-danger  mb-4">{error}</div>   : null}
+
+      <div className="row row-deck row-cards mb-4">
+        <div className="col-md-4">
+          <DataCard title="Resources">
+            <div className="d-flex align-items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-lg text-muted" width="32" height="32" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M3 21l18 0" /><path d="M9 8l1 0" /><path d="M9 12l1 0" /><path d="M9 16l1 0" /><path d="M14 8l1 0" /><path d="M14 12l1 0" /><path d="M14 16l1 0" />
+                <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16" />
+              </svg>
+              <div>
+                <div className="h1 mb-0">{resourceCount}</div>
+                <div className="text-secondary small">bookable assets</div>
+              </div>
+            </div>
+          </DataCard>
+        </div>
+        <div className="col-md-4">
+          <DataCard title="Bookings">
+            <div className="d-flex align-items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-lg text-muted" width="32" height="32" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" />
+                <path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" />
+                <path d="M8 15l2 0" /><path d="M14 15l2 0" />
+              </svg>
+              <div>
+                <div className="h1 mb-0">{totalBookings}</div>
+                <div className="text-secondary small">total bookings</div>
+              </div>
+            </div>
+          </DataCard>
+        </div>
+        <div className="col-md-4">
+          <DataCard title="Current plan">
+            <div className="d-flex align-items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-lg text-muted" width="32" height="32" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9z" />
+                <path d="M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              <div>
+                <div className="h3 mb-0">{entitlement?.planName || 'Unknown'}</div>
+                <div className="text-secondary small"><a href="/plans">View plan details</a></div>
+              </div>
+            </div>
+          </DataCard>
+        </div>
+      </div>
 
       {/* Profile */}
       <DataCard title="Business profile">

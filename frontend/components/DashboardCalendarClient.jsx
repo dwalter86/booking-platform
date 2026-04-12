@@ -37,9 +37,75 @@ function computeInitialRange() {
   return formatDateRange(start, end);
 }
 
-export default function DashboardCalendarClient({ bookings = [], unavailabilityBlocks = [] }) {
+function toMins(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function getSlotsForDay(rules, dateStr) {
+  const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+  return rules
+    .filter(r => r.day_of_week === dayOfWeek && r.is_open && r.slot_duration_minutes)
+    .reduce((total, rule) => {
+      const interval = rule.slot_interval_minutes || rule.slot_duration_minutes;
+      return total + Math.floor((toMins(rule.end_time) - toMins(rule.start_time)) / interval);
+    }, 0);
+}
+
+function DonutChart({ count, capacity }) {
+  const r = 26;
+  const cx = 36;
+  const cy = 36;
+  const strokeWidth = 8;
+  const circumference = 2 * Math.PI * r;
+  const ratio = capacity > 0 ? Math.min(count / capacity, 1) : 0;
+  const filled = ratio * circumference;
+
+  return (
+    <svg width="72" height="72" viewBox="0 0 72 72" style={{ flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e2a78" strokeWidth={strokeWidth} />
+      {filled > 0 && (
+        <circle
+          cx={cx} cy={cy} r={r}
+          fill="none"
+          stroke="#4ea8ff"
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${filled} ${circumference}`}
+          transform={`rotate(-90 ${cx} ${cy})`}
+        />
+      )}
+    </svg>
+  );
+}
+
+export default function DashboardCalendarClient({ bookings = [], unavailabilityBlocks = [], resources = [], availabilityRulesByResource = {} }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const [calApi, setCalApi] = useState(null);
   const [dateRangeLabel, setDateRangeLabel] = useState(computeInitialRange);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const selectedDateLabel = useMemo(() => {
+    return new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    });
+  }, [selectedDate]);
+
+  const bookingsByResource = useMemo(() => {
+    const startMap = {};    // availability_only: booking starts on selected date
+    const overlapMap = {};  // free/hybrid: booking overlaps selected date
+    for (const b of bookings) {
+      const startDate = b.start_at?.slice(0, 10);
+      const endDate   = b.end_at?.slice(0, 10);
+      if (startDate === selectedDate) {
+        startMap[b.resource_id] = (startMap[b.resource_id] || 0) + 1;
+      }
+      if (startDate <= selectedDate && endDate >= selectedDate) {
+        overlapMap[b.resource_id] = (overlapMap[b.resource_id] || 0) + 1;
+      }
+    }
+    return { startMap, overlapMap };
+  }, [bookings, selectedDate]);
 
   const events = useMemo(() => {
     const bookingEvents = bookings.map((row) => ({
@@ -71,47 +137,108 @@ export default function DashboardCalendarClient({ bookings = [], unavailabilityB
   function handleToday() { calApi?.today(); }
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title mb-0">
-          Bookings Calendar{dateRangeLabel ? ` - ${dateRangeLabel}` : ''}
-        </h3>
-        <div className="card-options">
-          <div className="btn-group">
-            <button className="btn btn-sm btn-outline-secondary" onClick={handlePrev} aria-label="Previous">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M15 6l-6 6l6 6" />
-              </svg>
-            </button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={handleToday}>Today</button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={handleNext} aria-label="Next">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M9 6l6 6l-6 6" />
-              </svg>
-            </button>
+    <>
+      <style>{`
+        .fc-daygrid-day { cursor: pointer; }
+        .fc-daygrid-day:hover .fc-daygrid-day-frame { background-color: rgba(78, 168, 255, 0.07); }
+        .fc-daygrid-day.fc-day-selected .fc-daygrid-day-frame { background-color: rgba(78, 168, 255, 0.15); }
+      `}</style>
+
+      <div className="card mb-4">
+        <div className="card-header">
+          <h3 className="card-title mb-0">
+            Bookings Calendar{dateRangeLabel ? ` - ${dateRangeLabel}` : ''}
+          </h3>
+          <div className="card-options">
+            <div className="btn-group">
+              <button className="btn btn-sm btn-outline-secondary" onClick={handlePrev} aria-label="Previous">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M15 6l-6 6l6 6" />
+                </svg>
+              </button>
+              <button className="btn btn-sm btn-outline-secondary" onClick={handleToday}>Today</button>
+              <button className="btn btn-sm btn-outline-secondary" onClick={handleNext} aria-label="Next">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M9 6l6 6l-6 6" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+        <div className="card-body">
+          <FullCalendarNoSSR
+            initialView="dayGridThreeWeeks"
+            views={{
+              dayGridThreeWeeks: {
+                type: 'dayGrid',
+                duration: { weeks: 3 },
+              },
+            }}
+            headerToolbar={false}
+            height="auto"
+            events={events}
+            dateClick={(info) => setSelectedDate(info.dateStr)}
+            dayCellClassNames={(arg) => arg.dateStr === selectedDate ? ['fc-day-selected'] : []}
+            datesSet={(info) => {
+              setCalApi(info.view.calendar);
+              setDateRangeLabel(formatDateRange(info.start, info.end));
+            }}
+          />
+        </div>
       </div>
-      <div className="card-body">
-        <FullCalendarNoSSR
-          initialView="dayGridThreeWeeks"
-          views={{
-            dayGridThreeWeeks: {
-              type: 'dayGrid',
-              duration: { weeks: 3 },
-            },
-          }}
-          headerToolbar={false}
-          height="auto"
-          events={events}
-          datesSet={(info) => {
-            setCalApi(info.view.calendar);
-            setDateRangeLabel(formatDateRange(info.start, info.end));
-          }}
-        />
-      </div>
-    </div>
+
+      {resources.length > 0 && (
+        <>
+          <div className="text-secondary small mb-2">
+            Showing bookings for <strong>{selectedDateLabel}</strong>
+            {selectedDate !== todayStr && (
+              <button
+                className="btn btn-link btn-sm p-0 ms-2"
+                onClick={() => setSelectedDate(todayStr)}
+              >
+                Back to today
+              </button>
+            )}
+          </div>
+          <div className="d-flex gap-3 mb-4" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
+            {resources.map((resource) => {
+              const isAvailabilityOnly = resource.booking_mode === 'availability_only';
+              const count = isAvailabilityOnly
+                ? (bookingsByResource.startMap[resource.id] || 0)
+                : (bookingsByResource.overlapMap[resource.id] || 0);
+              const capacity = isAvailabilityOnly
+                ? getSlotsForDay(availabilityRulesByResource[resource.id] || [], selectedDate) * (resource.capacity || 1)
+                : (resource.capacity || 0);
+              return (
+                <a
+                  key={resource.id}
+                  href={`/bookings?resource_id=${resource.id}&date_from=${selectedDate}&date_to=${selectedDate}&filter=1`}
+                  className="text-decoration-none"
+                  style={{ flexShrink: 0 }}
+                >
+                  <div className="card mb-0" style={{ minWidth: '210px' }}>
+                    <div className="card-body d-flex align-items-center gap-3">
+                      <DonutChart count={count} capacity={capacity} />
+                      <div style={{ minWidth: 0 }}>
+                        <div className="fw-medium text-truncate mb-1">
+                          {resource.name}
+                        </div>
+                        <div className="d-flex align-items-baseline gap-1">
+                          <div className="h2 mb-0">{count}</div>
+                          {capacity > 0 && <div className="text-secondary small">/ {capacity}</div>}
+                        </div>
+                        <div className="text-secondary small">capacity</div>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </>
   );
 }
