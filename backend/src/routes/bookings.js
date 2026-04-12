@@ -277,4 +277,71 @@ router.post('/:id/cancel', requireAuth, requireAdmin, asyncHandler(async (req, r
   res.json(booking);
 }));
 
+router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const allowed = ['customer_name', 'customer_email', 'customer_phone', 'party_size', 'notes', 'start_at', 'end_at'];
+  const fields = {};
+
+  for (const key of allowed) {
+    if (key in body) fields[key] = body[key];
+  }
+
+  if (Object.keys(fields).length === 0) {
+    throw new AppError(400, 'No editable fields provided.');
+  }
+
+  if ('customer_name' in fields) {
+    const v = String(fields.customer_name || '').trim();
+    if (!v) throw new AppError(400, 'customer_name cannot be blank.');
+    fields.customer_name = v;
+  }
+  if ('customer_email' in fields) fields.customer_email = String(fields.customer_email || '').trim() || null;
+  if ('customer_phone' in fields) fields.customer_phone = String(fields.customer_phone || '').trim() || null;
+  if ('notes' in fields) fields.notes = String(fields.notes || '').trim() || null;
+  if ('party_size' in fields) {
+    const n = parseInt(fields.party_size, 10);
+    if (isNaN(n) || n < 1) throw new AppError(400, 'party_size must be a positive integer.');
+    fields.party_size = n;
+  }
+  if ('start_at' in fields) {
+    const d = new Date(fields.start_at);
+    if (isNaN(d.getTime())) throw new AppError(400, 'start_at must be a valid datetime.');
+    fields.start_at = d;
+  }
+  if ('end_at' in fields) {
+    const d = new Date(fields.end_at);
+    if (isNaN(d.getTime())) throw new AppError(400, 'end_at must be a valid datetime.');
+    fields.end_at = d;
+  }
+  if (fields.start_at && fields.end_at && fields.end_at <= fields.start_at) {
+    throw new AppError(400, 'end_at must be after start_at.');
+  }
+
+  const booking = await withTenantContext(req.auth.tenant_id, async (client) => {
+    const existing = await getBookingWithResource(client, req.auth.tenant_id, req.params.id);
+
+    const setClauses = [];
+    const params = [req.auth.tenant_id, req.params.id];
+    for (const [key, value] of Object.entries(fields)) {
+      params.push(value);
+      setClauses.push(`${key} = $${params.length}`);
+    }
+    setClauses.push('updated_at = now()');
+
+    await client.query(
+      `UPDATE public.bookings SET ${setClauses.join(', ')} WHERE tenant_id = $1 AND id = $2`,
+      params
+    );
+
+    await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'booking', req.params.id, 'updated', {
+      previous: { customer_name: existing.customer_name, customer_email: existing.customer_email, customer_phone: existing.customer_phone, party_size: existing.party_size, notes: existing.notes, start_at: existing.start_at, end_at: existing.end_at },
+      updated: fields,
+    });
+
+    return getBookingWithResource(client, req.auth.tenant_id, req.params.id);
+  });
+
+  res.json(booking);
+}));
+
 export default router;

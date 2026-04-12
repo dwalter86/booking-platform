@@ -73,6 +73,13 @@ async function getResources() {
   }
 }
 
+function formatDateTimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return '';
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 function badgeClass(status) {
   if (status === 'confirmed') return 'bg-green-lt';
   if (status === 'cancelled') return 'bg-red-lt';
@@ -87,7 +94,11 @@ export default async function BookingsPage({ searchParams }) {
 
   const selectedBookingId = searchParams?.booking_id || '';
   const selectedBooking = bookings.find((b) => b.id === selectedBookingId) || null;
+  const isEditMode = searchParams?.edit === '1' && !!selectedBooking;
   const success = searchParams?.success || '';
+  const detailReturnParams = new URLSearchParams(
+    Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))
+  ).toString();
 
   const hasActiveFilters = !!(searchParams?.status || searchParams?.resource_id || searchParams?.date_from || searchParams?.date_to);
   const showFilter = searchParams?.filter === '1' || hasActiveFilters;
@@ -227,14 +238,74 @@ export default async function BookingsPage({ searchParams }) {
         <div className="col-lg-5 panel-slide-in">
           <div className="card">
             <div className="card-header d-flex align-items-center justify-content-between">
-              <h3 className="card-title">Booking details</h3>
-              <Link
-                href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id'))).toString()}`}
-                className="btn-close"
-                aria-label="Close"
-              />
+              <h3 className="card-title">{isEditMode ? 'Edit booking' : 'Booking details'}</h3>
+              <div className="d-flex align-items-center gap-2">
+                {!isEditMode ? (
+                  <Link
+                    href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), edit: '1' }).toString()}`}
+                    className="btn btn-sm btn-outline-secondary"
+                  >
+                    Edit
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
+                    className="btn btn-sm btn-outline-secondary"
+                  >
+                    View
+                  </Link>
+                )}
+                <Link
+                  href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))).toString()}`}
+                  className="btn-close"
+                  aria-label="Close"
+                />
+              </div>
             </div>
             <div className="card-body">
+              {isEditMode ? (
+                <form action="/booking-actions/update" method="post">
+                  <input type="hidden" name="booking_id" value={selectedBooking.id} />
+                  {detailReturnParams && <input type="hidden" name="return_params" value={detailReturnParams} />}
+                  <div className="mb-3">
+                    <label className="form-label">Customer name</label>
+                    <input className="form-control" type="text" name="customer_name" defaultValue={selectedBooking.customer_name || ''} required />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Email</label>
+                    <input className="form-control" type="email" name="customer_email" defaultValue={selectedBooking.customer_email || ''} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Phone</label>
+                    <input className="form-control" type="tel" name="customer_phone" defaultValue={selectedBooking.customer_phone || ''} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Party size</label>
+                    <input className="form-control" type="number" name="party_size" min="1" defaultValue={selectedBooking.party_size || 1} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Start</label>
+                    <input className="form-control" type="datetime-local" name="start_at" defaultValue={formatDateTimeLocal(selectedBooking.start_at)} required />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">End</label>
+                    <input className="form-control" type="datetime-local" name="end_at" defaultValue={formatDateTimeLocal(selectedBooking.end_at)} required />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Notes</label>
+                    <textarea className="form-control" name="notes" rows="3" defaultValue={selectedBooking.notes || ''} />
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button className="btn btn-primary" type="submit">Save changes</button>
+                    <Link
+                      href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
+                      className="btn btn-outline-secondary"
+                    >
+                      Cancel
+                    </Link>
+                  </div>
+                </form>
+              ) : (
               <>
                   <dl className="row mb-0">
                     <dt className="col-sm-4">Status</dt>
@@ -308,6 +379,7 @@ export default async function BookingsPage({ searchParams }) {
                     </form>
                   </div>
                 </>
+              )}
             </div>
           </div>
         </div>
