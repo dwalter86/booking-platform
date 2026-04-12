@@ -70,3 +70,19 @@ pre {
 .fc .slot-open {
   cursor: crosshair;
 }
+
+/* Split-panel slide-in animation */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.panel-slide-in {
+  animation: slideInFromRight 0.2s ease-out;
+}

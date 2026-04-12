@@ -89,17 +89,28 @@ export default async function BookingsPage({ searchParams }) {
   const selectedBooking = bookings.find((b) => b.id === selectedBookingId) || null;
   const success = searchParams?.success || '';
 
-  return (
-    <LayoutShell title="Bookings">
-      <p className="text-secondary mb-4">Review, confirm, and cancel provisional bookings.</p>
+  const hasActiveFilters = !!(searchParams?.status || searchParams?.resource_id || searchParams?.date_from || searchParams?.date_to);
+  const showFilter = searchParams?.filter === '1' || hasActiveFilters;
+  const filterToggleParams = new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'filter')));
+  const filterToggleHref = showFilter ? `/bookings?${filterToggleParams}` : `/bookings?${filterToggleParams}&filter=1`;
 
+  const filterButton = (
+    <Link href={filterToggleHref} className={`btn ${hasActiveFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}>
+      Filters{hasActiveFilters ? ' ·' : ''}
+    </Link>
+  );
+
+  return (
+    <LayoutShell title="Bookings" headerAction={filterButton}>
       {success ? <div className="alert alert-success">{success}</div> : null}
       {error ? <div className="alert alert-danger">{error}</div> : null}
       {searchParams?.error ? <div className="alert alert-danger">{searchParams.error}</div> : null}
 
+      {showFilter && (
       <div className="card mb-4">
         <div className="card-body">
           <form className="row g-3" method="get">
+            <input type="hidden" name="filter" value="1" />
             <div className="col-md-3">
               <label className="form-label">Status</label>
               <select className="form-select" name="status" defaultValue={searchParams?.status || ''}>
@@ -127,15 +138,16 @@ export default async function BookingsPage({ searchParams }) {
               <input className="form-control" type="date" name="date_to" defaultValue={searchParams?.date_to || ''} />
             </div>
             <div className="col-md-2 d-flex align-items-end gap-2">
-              <button className="btn btn-primary w-100" type="submit">Filter</button>
+              <button className="btn btn-primary w-100" type="submit">Apply</button>
               <Link className="btn btn-outline-secondary" href="/bookings">Reset</Link>
             </div>
           </form>
         </div>
       </div>
+      )}
 
       <div className="row g-4">
-        <div className="col-lg-7">
+        <div className={selectedBooking ? 'col-lg-7' : 'col-12'}>
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Booking list</h3>
@@ -169,7 +181,7 @@ export default async function BookingsPage({ searchParams }) {
                         </td>
                         <td>{formatDateTime(booking.start_at)}</td>
                         <td>{formatDateTime(booking.end_at)}</td>
-                        <td>
+                        <td className="text-end">
                           <Link
                             className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
                             href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), booking_id: booking.id }).toString()}`}
@@ -211,16 +223,19 @@ export default async function BookingsPage({ searchParams }) {
           </div>
         </div>
 
-        <div className="col-lg-5">
+        {selectedBooking && (
+        <div className="col-lg-5 panel-slide-in">
           <div className="card">
-            <div className="card-header">
+            <div className="card-header d-flex align-items-center justify-content-between">
               <h3 className="card-title">Booking details</h3>
+              <Link
+                href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id'))).toString()}`}
+                className="btn-close"
+                aria-label="Close"
+              />
             </div>
             <div className="card-body">
-              {!selectedBooking ? (
-                <div className="text-secondary">Select a booking to view details and actions.</div>
-              ) : (
-                <>
+              <>
                   <dl className="row mb-0">
                     <dt className="col-sm-4">Status</dt>
                     <dd className="col-sm-8"><span className={`badge ${badgeClass(selectedBooking.status)}`}>{selectedBooking.status}</span></dd>
@@ -293,10 +308,10 @@ export default async function BookingsPage({ searchParams }) {
                     </form>
                   </div>
                 </>
-              )}
             </div>
           </div>
         </div>
+        )}
       </div>
     </LayoutShell>
   );

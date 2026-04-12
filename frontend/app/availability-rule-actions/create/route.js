@@ -23,36 +23,66 @@ export async function POST(request) {
   const returnBase = String(form.get('return_base') || '').trim();
   const redirectBase = returnBase || `/availability-rules?resource_id=${resource_id}`;
 
-  const payload = {
-    resource_id,
-    day_of_week:            parseInt(form.get('day_of_week') || '0', 10),
-    start_time:             String(form.get('start_time') || '').trim(),
-    end_time:               String(form.get('end_time') || '').trim(),
-    slot_duration_minutes:  form.get('slot_duration_minutes') ? parseInt(form.get('slot_duration_minutes'), 10) : null,
-    slot_interval_minutes:  form.get('slot_interval_minutes') ? parseInt(form.get('slot_interval_minutes'), 10) : null,
-    is_open:                form.get('is_open') === 'on',
-  };
-
-  try {
-    const response = await fetch(`${config.apiBaseUrl}/api/availability-rules`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...(tenantSubdomain ? { 'x-tenant-subdomain': tenantSubdomain } : {}),
-      },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      const message = encodeURIComponent(data?.error || 'Unable to create availability rule');
-      return NextResponse.redirect(new URL(`${redirectBase}&error=${message}`, baseUrl), 302);
-    }
-  } catch {
-    return NextResponse.redirect(new URL(`${redirectBase}&error=API%20unavailable`, baseUrl), 302);
+  const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+  const rawDays = form.getAll('day_of_week');
+  let selectedDays;
+  if (rawDays.includes('all')) {
+    selectedDays = ALL_DAYS;
+  } else {
+    selectedDays = [...new Set(
+      rawDays.map((v) => parseInt(v, 10)).filter((n) => !isNaN(n) && n >= 0 && n <= 6)
+    )];
   }
 
-  return NextResponse.redirect(new URL(`${redirectBase}&success=Rule%20created`, baseUrl), 302);
+  if (selectedDays.length === 0) {
+    const message = encodeURIComponent('Please select at least one day of the week');
+    return NextResponse.redirect(new URL(`${redirectBase}&error=${message}`, baseUrl), 302);
+  }
+
+  const sharedFields = {
+    resource_id,
+    start_time:            String(form.get('start_time') || '').trim(),
+    end_time:              String(form.get('end_time') || '').trim(),
+    slot_duration_minutes: form.get('slot_duration_minutes') ? parseInt(form.get('slot_duration_minutes'), 10) : null,
+    slot_interval_minutes: form.get('slot_interval_minutes') ? parseInt(form.get('slot_interval_minutes'), 10) : null,
+    is_open:               form.get('is_open') === 'on',
+  };
+
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...(tenantSubdomain ? { 'x-tenant-subdomain': tenantSubdomain } : {}),
+  };
+
+  const failures = [];
+  for (const day of selectedDays) {
+    try {
+      const response = await fetch(`${config.apiBaseUrl}/api/availability-rules`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ ...sharedFields, day_of_week: day }),
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        failures.push(data?.error || `Day ${day} failed`);
+      }
+    } catch {
+      failures.push(`Day ${day}: API unavailable`);
+    }
+  }
+
+  if (failures.length > 0 && failures.length === selectedDays.length) {
+    const message = encodeURIComponent(failures[0] || 'Unable to create availability rules');
+    return NextResponse.redirect(new URL(`${redirectBase}&error=${message}`, baseUrl), 302);
+  }
+  if (failures.length > 0) {
+    const created = selectedDays.length - failures.length;
+    const message = encodeURIComponent(`${created} rule(s) created. Failed: ${failures.join('; ')}`);
+    return NextResponse.redirect(new URL(`${redirectBase}&success=${message}`, baseUrl), 302);
+  }
+
+  const count = selectedDays.length;
+  const message = count === 1 ? 'Rule%20created' : encodeURIComponent(`${count} rules created`);
+  return NextResponse.redirect(new URL(`${redirectBase}&success=${message}`, baseUrl), 302);
 }

@@ -43,6 +43,9 @@ export default async function ResourcesPage({ searchParams }) {
   const panel = searchParams?.panel || '';
   const isAvailabilityPanel = panel === 'availability';
   const isUnavailabilityPanel = panel === 'unavailability';
+  const show = searchParams?.show || '';
+  const editRuleId = searchParams?.edit_rule || '';
+  const editExceptionId = searchParams?.edit_exception || '';
   const selectedResource = Array.isArray(rows)
     ? rows.find((r) => r.id === selectedResourceId) || null
     : null;
@@ -59,6 +62,9 @@ export default async function ResourcesPage({ searchParams }) {
     rules = rulesRes.ok ? await rulesRes.json() : [];
     exceptions = exceptionsRes.ok ? await exceptionsRes.json() : [];
   }
+
+  const editingRule = editRuleId ? (Array.isArray(rules) ? rules.find(r => r.id === editRuleId) || null : null) : null;
+  const editingException = editExceptionId ? (Array.isArray(exceptions) ? exceptions.find(e => e.id === editExceptionId) || null : null) : null;
 
   if (isUnavailabilityPanel && selectedResource) {
     const blocksRes = await apiFetch('/api/unavailability-blocks');
@@ -86,7 +92,7 @@ export default async function ResourcesPage({ searchParams }) {
       {error ? <div className="alert alert-danger">{error}</div> : null}
 
       <div className="row g-4">
-        <div className="col-lg-7">
+        <div className={selectedResource || isAdding ? 'col-lg-7' : 'col-12'}>
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Resource list</h3>
@@ -126,7 +132,7 @@ export default async function ResourcesPage({ searchParams }) {
                         <td>{row.capacity}</td>
                         <td>{bookingModeLabel(row.booking_mode)}</td>
                         <td>
-                          <div className="d-flex gap-1 flex-wrap">
+                          <div className="d-flex gap-1 flex-wrap justify-content-end">
                             <Link
                               className={`btn btn-sm ${isEditSelected ? 'btn-primary' : 'btn-outline-primary'}`}
                               href={`/resources?resource_id=${row.id}`}
@@ -156,7 +162,8 @@ export default async function ResourcesPage({ searchParams }) {
           </div>
         </div>
 
-        <div className="col-lg-5">
+        {(selectedResource || isAdding) && (
+        <div className="col-lg-5 panel-slide-in">
           <div className="card">
             <div className="card-header d-flex align-items-center justify-content-between">
               <h3 className="card-title">
@@ -170,22 +177,23 @@ export default async function ResourcesPage({ searchParams }) {
                         ? selectedResource.name
                         : 'Resource details'}
               </h3>
-              {selectedResource && !panel && (
-                <form action="/resource-actions/delete" method="post">
-                  <input type="hidden" name="id" value={selectedResource.id} />
-                  <button className="btn btn-sm btn-outline-danger" type="submit">Delete</button>
-                </form>
-              )}
-              {(isAvailabilityPanel || isUnavailabilityPanel) && selectedResource && (
-                <Link className="btn btn-sm btn-outline-secondary" href={`/resources?resource_id=${selectedResource.id}`}>
-                  Edit resource
-                </Link>
-              )}
+              <div className="d-flex align-items-center gap-2">
+                {selectedResource && !panel && (
+                  <form action="/resource-actions/delete" method="post">
+                    <input type="hidden" name="id" value={selectedResource.id} />
+                    <button className="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                  </form>
+                )}
+                {(isAvailabilityPanel || isUnavailabilityPanel) && selectedResource && (
+                  <Link className="btn btn-sm btn-outline-secondary" href={`/resources?resource_id=${selectedResource.id}`}>
+                    Edit resource
+                  </Link>
+                )}
+                <Link href="/resources" className="btn-close" aria-label="Close" />
+              </div>
             </div>
             <div className="card-body">
-              {!isAdding && !selectedResource ? (
-                <div className="text-secondary">Select a resource to view details, or click Add resource to create a new one.</div>
-              ) : isAdding ? (
+              {isAdding ? (
                 <form action="/resource-actions/create" method="post">
                   <div className="row g-3">
                     <div className="col-12">
@@ -250,95 +258,271 @@ export default async function ResourcesPage({ searchParams }) {
                 </form>
               ) : isAvailabilityPanel && selectedResource ? (
                 <div className="d-flex flex-column gap-4">
-                  <div>
-                    <h4 className="mb-3">Add availability rule</h4>
-                    <form action="/availability-rule-actions/create" method="post">
-                      <input type="hidden" name="resource_id" value={selectedResource.id} />
-                      <input type="hidden" name="return_base" value={availReturnBase} />
-                      <div className="row g-2">
-                        <div className="col-12">
-                          <label className="form-label">Day of week</label>
-                          <select className="form-select" name="day_of_week" required>
-                            {DAYS.map((d) => (
-                              <option key={d.value} value={d.value}>{d.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Open from</label>
-                          <input className="form-control" type="time" name="start_time" required />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Open until</label>
-                          <input className="form-control" type="time" name="end_time" required />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Slot duration (min)</label>
-                          <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Slot interval (min)</label>
-                          <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" />
-                        </div>
-                        <div className="col-12">
-                          <label className="form-check">
-                            <input className="form-check-input" type="checkbox" name="is_open" defaultChecked />
-                            <span className="form-check-label">Open</span>
-                          </label>
-                        </div>
-                        <div className="col-12">
-                          <button className="btn btn-primary btn-sm" type="submit">Add rule</button>
-                        </div>
-                      </div>
-                    </form>
+
+                  {/* Action buttons */}
+                  <div className="d-flex gap-2">
+                    <Link
+                      className={`btn btn-sm ${show === 'rule' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      href={show === 'rule' ? availReturnBase : `${availReturnBase}&show=rule`}
+                    >
+                      Add rule
+                    </Link>
+                    <Link
+                      className={`btn btn-sm ${show === 'exception' ? 'btn-secondary' : 'btn-outline-secondary'}`}
+                      href={show === 'exception' ? availReturnBase : `${availReturnBase}&show=exception`}
+                    >
+                      Add exception
+                    </Link>
                   </div>
 
+                  {/* Add rule form */}
+                  {show === 'rule' && !editingRule && (
+                    <div>
+                      <h4 className="mb-3">Add availability rule</h4>
+                      <form action="/availability-rule-actions/create" method="post">
+                        <input type="hidden" name="resource_id" value={selectedResource.id} />
+                        <input type="hidden" name="return_base" value={availReturnBase} />
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <label className="form-label d-block mb-1">Days of week</label>
+                            <div className="mb-2">
+                              <input type="checkbox" className="btn-check" name="day_of_week" value="all" id="dow_all" autoComplete="off" />
+                              <label className="btn btn-outline-secondary btn-sm w-100" htmlFor="dow_all">Every day</label>
+                            </div>
+                            <div className="btn-group w-100" role="group">
+                              {DAYS.map((d) => (
+                                <>
+                                  <input key={`i${d.value}`} type="checkbox" className="btn-check dow-day" name="day_of_week" value={d.value} id={`dow_${d.value}`} autoComplete="off" />
+                                  <label key={`l${d.value}`} className="btn btn-outline-primary btn-sm" htmlFor={`dow_${d.value}`}>{d.label.slice(0, 3)}</label>
+                                </>
+                              ))}
+                            </div>
+                            <script dangerouslySetInnerHTML={{ __html: `
+                              (function() {
+                                var allBox = document.getElementById('dow_all');
+                                var dayBoxes = Array.from(document.querySelectorAll('.dow-day'));
+                                allBox.addEventListener('change', function() {
+                                  dayBoxes.forEach(function(cb) { cb.checked = allBox.checked; });
+                                });
+                                dayBoxes.forEach(function(cb) {
+                                  cb.addEventListener('change', function() {
+                                    allBox.checked = dayBoxes.every(function(c) { return c.checked; });
+                                  });
+                                });
+                              })();
+                            ` }} />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open from</label>
+                            <input className="form-control" type="time" name="start_time" id="add_rule_start" required />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open until</label>
+                            <input className="form-control" type="time" name="end_time" id="add_rule_end" required />
+                          </div>
+                          <div className="col-12">
+                            <input type="checkbox" className="btn-check" id="add_rule_allday" autoComplete="off" />
+                            <label className="btn btn-outline-secondary btn-sm" htmlFor="add_rule_allday">All day</label>
+                          </div>
+                          <script dangerouslySetInnerHTML={{ __html: `
+                            (function() {
+                              var cb = document.getElementById('add_rule_allday');
+                              var s = document.getElementById('add_rule_start');
+                              var e = document.getElementById('add_rule_end');
+                              cb.addEventListener('change', function() {
+                                if (cb.checked) { s.value = '00:00'; e.value = '23:59'; s.readOnly = true; e.readOnly = true; }
+                                else { s.value = ''; e.value = ''; s.readOnly = false; e.readOnly = false; }
+                              });
+                            })();
+                          ` }} />
+                          {selectedResource.booking_mode !== 'free' && (
+                          <>
+                          <div className="col-6">
+                            <label className="form-label">Slot duration (min)</label>
+                            <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Slot interval (min)</label>
+                            <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" />
+                          </div>
+                          </>
+                          )}
+                          <div className="col-12">
+                            <label className="form-check">
+                              <input className="form-check-input" type="checkbox" name="is_open" defaultChecked />
+                              <span className="form-check-label">Open</span>
+                            </label>
+                          </div>
+                          <div className="col-12 d-flex gap-2">
+                            <button className="btn btn-primary btn-sm" type="submit">Add rule</button>
+                            <Link className="btn btn-outline-secondary btn-sm" href={availReturnBase}>Cancel</Link>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Edit rule form */}
+                  {editingRule && (
+                    <div>
+                      <h4 className="mb-3">Edit rule — {DAYS.find(d => d.value === editingRule.day_of_week)?.label}</h4>
+                      <form action="/availability-rule-actions/update" method="post">
+                        <input type="hidden" name="id" value={editingRule.id} />
+                        <input type="hidden" name="resource_id" value={selectedResource.id} />
+                        <input type="hidden" name="return_base" value={availReturnBase} />
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <label className="form-label">Day of week</label>
+                            <select className="form-select" name="day_of_week" defaultValue={editingRule.day_of_week}>
+                              {DAYS.map((d) => (
+                                <option key={d.value} value={d.value}>{d.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {(() => { const isAllDay = editingRule.start_time?.slice(0,5) === '00:00' && editingRule.end_time?.slice(0,5) === '23:59'; return (
+                          <>
+                          <div className="col-6">
+                            <label className="form-label">Open from</label>
+                            <input className="form-control" type="time" name="start_time" id="edit_rule_start" defaultValue={editingRule.start_time?.slice(0, 5)} readOnly={isAllDay} required />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open until</label>
+                            <input className="form-control" type="time" name="end_time" id="edit_rule_end" defaultValue={editingRule.end_time?.slice(0, 5)} readOnly={isAllDay} required />
+                          </div>
+                          <div className="col-12">
+                            <input type="checkbox" className="btn-check" id="edit_rule_allday" defaultChecked={isAllDay} autoComplete="off" />
+                            <label className="btn btn-outline-secondary btn-sm" htmlFor="edit_rule_allday">All day</label>
+                          </div>
+                          <script dangerouslySetInnerHTML={{ __html: `
+                            (function() {
+                              var cb = document.getElementById('edit_rule_allday');
+                              var s = document.getElementById('edit_rule_start');
+                              var e = document.getElementById('edit_rule_end');
+                              cb.addEventListener('change', function() {
+                                if (cb.checked) { s.value = '00:00'; e.value = '23:59'; s.readOnly = true; e.readOnly = true; }
+                                else { s.value = ''; e.value = ''; s.readOnly = false; e.readOnly = false; }
+                              });
+                            })();
+                          ` }} />
+                          </> ); })()}
+                          {selectedResource.booking_mode !== 'free' && (
+                          <>
+                          <div className="col-6">
+                            <label className="form-label">Slot duration (min)</label>
+                            <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" defaultValue={asValue(editingRule.slot_duration_minutes)} />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Slot interval (min)</label>
+                            <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" defaultValue={asValue(editingRule.slot_interval_minutes)} />
+                          </div>
+                          </>
+                          )}
+                          <div className="col-12">
+                            <label className="form-check">
+                              <input className="form-check-input" type="checkbox" name="is_open" defaultChecked={checked(editingRule.is_open)} />
+                              <span className="form-check-label">Open</span>
+                            </label>
+                          </div>
+                          <div className="col-12 d-flex gap-2">
+                            <button className="btn btn-primary btn-sm" type="submit">Save changes</button>
+                            <Link className="btn btn-outline-secondary btn-sm" href={availReturnBase}>Cancel</Link>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Add exception form */}
+                  {show === 'exception' && !editingException && (
+                    <div>
+                      <h4 className="mb-3">Add date exception</h4>
+                      <form action="/availability-exception-actions/create" method="post">
+                        <input type="hidden" name="resource_id" value={selectedResource.id} />
+                        <input type="hidden" name="return_base" value={availReturnBase} />
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <label className="form-label">Date</label>
+                            <input className="form-control" type="date" name="exception_date" required />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open from</label>
+                            <input className="form-control" type="time" name="start_time" />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open until</label>
+                            <input className="form-control" type="time" name="end_time" />
+                          </div>
+                          <div className="col-12">
+                            <label className="form-label">Note (optional)</label>
+                            <input className="form-control" type="text" name="note" placeholder="e.g. Bank Holiday" />
+                          </div>
+                          <div className="col-12">
+                            <label className="form-check">
+                              <input className="form-check-input" type="checkbox" name="is_closed" />
+                              <span className="form-check-label">Closed all day</span>
+                            </label>
+                          </div>
+                          <div className="col-12 d-flex gap-2">
+                            <button className="btn btn-primary btn-sm" type="submit">Add exception</button>
+                            <Link className="btn btn-outline-secondary btn-sm" href={availReturnBase}>Cancel</Link>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Edit exception form */}
+                  {editingException && (
+                    <div>
+                      <h4 className="mb-3">Edit exception — {editingException.exception_date}</h4>
+                      <form action="/availability-exception-actions/update" method="post">
+                        <input type="hidden" name="id" value={editingException.id} />
+                        <input type="hidden" name="resource_id" value={selectedResource.id} />
+                        <input type="hidden" name="return_base" value={availReturnBase} />
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <label className="form-label">Date</label>
+                            <input className="form-control" type="date" name="exception_date" defaultValue={editingException.exception_date} required />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open from</label>
+                            <input className="form-control" type="time" name="start_time" defaultValue={editingException.start_time?.slice(0, 5)} />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Open until</label>
+                            <input className="form-control" type="time" name="end_time" defaultValue={editingException.end_time?.slice(0, 5)} />
+                          </div>
+                          <div className="col-12">
+                            <label className="form-label">Note (optional)</label>
+                            <input className="form-control" type="text" name="note" placeholder="e.g. Bank Holiday" defaultValue={asValue(editingException.note)} />
+                          </div>
+                          <div className="col-12">
+                            <label className="form-check">
+                              <input className="form-check-input" type="checkbox" name="is_closed" defaultChecked={checked(editingException.is_closed)} />
+                              <span className="form-check-label">Closed all day</span>
+                            </label>
+                          </div>
+                          <div className="col-12 d-flex gap-2">
+                            <button className="btn btn-primary btn-sm" type="submit">Save changes</button>
+                            <Link className="btn btn-outline-secondary btn-sm" href={availReturnBase}>Cancel</Link>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Weekly schedule */}
                   <div>
                     <h4 className="mb-3">Weekly schedule</h4>
                     <AvailabilityRulesList rules={rules} resourceId={selectedResource.id} returnBase={availReturnBase} />
                   </div>
 
-                  <hr className="my-0" />
-
-                  <div>
-                    <h4 className="mb-3">Add date exception</h4>
-                    <form action="/availability-exception-actions/create" method="post">
-                      <input type="hidden" name="resource_id" value={selectedResource.id} />
-                      <input type="hidden" name="return_base" value={availReturnBase} />
-                      <div className="row g-2">
-                        <div className="col-12">
-                          <label className="form-label">Date</label>
-                          <input className="form-control" type="date" name="exception_date" required />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Open from</label>
-                          <input className="form-control" type="time" name="start_time" />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Open until</label>
-                          <input className="form-control" type="time" name="end_time" />
-                        </div>
-                        <div className="col-12">
-                          <label className="form-label">Note (optional)</label>
-                          <input className="form-control" type="text" name="note" placeholder="e.g. Bank Holiday" />
-                        </div>
-                        <div className="col-12">
-                          <label className="form-check">
-                            <input className="form-check-input" type="checkbox" name="is_closed" />
-                            <span className="form-check-label">Closed all day</span>
-                          </label>
-                        </div>
-                        <div className="col-12">
-                          <button className="btn btn-primary btn-sm" type="submit">Add exception</button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-
+                  {/* Date exceptions */}
                   <div>
                     <h4 className="mb-3">Date exceptions</h4>
                     <AvailabilityExceptionsList exceptions={exceptions} resourceId={selectedResource.id} returnBase={availReturnBase} />
                   </div>
+
                 </div>
               ) : isUnavailabilityPanel && selectedResource ? (
                 <div className="d-flex flex-column gap-4">
@@ -440,6 +624,7 @@ export default async function ResourcesPage({ searchParams }) {
             </div>
           </div>
         </div>
+        )}
       </div>
     </LayoutShell>
   );

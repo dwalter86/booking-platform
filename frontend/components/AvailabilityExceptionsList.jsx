@@ -2,7 +2,7 @@
 
 export default function AvailabilityExceptionsList({ exceptions, resourceId, returnBase }) {
   if (!Array.isArray(exceptions) || !exceptions.length) {
-    return <p className="text-secondary mb-0">No exceptions set. Add one below for bank holidays or special closures.</p>;
+    return <p className="text-secondary mb-0">No exceptions set. Click Add exception for bank holidays or special closures.</p>;
   }
 
   return (
@@ -24,12 +24,17 @@ export default function AvailabilityExceptionsList({ exceptions, resourceId, ret
                   {ex.note ? ` · ${ex.note}` : ''}
                 </div>
               </div>
-              <form action="/availability-exception-actions/delete" method="post">
-                <input type="hidden" name="id" value={ex.id} />
-                <input type="hidden" name="resource_id" value={resourceId} />
-                {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
-                <button className="btn btn-outline-danger btn-sm" type="submit">Delete</button>
-              </form>
+              <div className="d-flex gap-2">
+                <a className="btn btn-outline-secondary btn-sm" href={`${returnBase}&edit_exception=${ex.id}`}>
+                  Edit
+                </a>
+                <form action="/availability-exception-actions/delete" method="post">
+                  <input type="hidden" name="id" value={ex.id} />
+                  <input type="hidden" name="resource_id" value={resourceId} />
+                  {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
+                  <button className="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                </form>
+              </div>
             </div>
           </div>
         </div>

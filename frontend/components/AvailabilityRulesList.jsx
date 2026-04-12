@@ -4,7 +4,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 
 export default function AvailabilityRulesList({ rules, resourceId, returnBase }) {
   if (!Array.isArray(rules) || !rules.length) {
-    return <p className="text-secondary mb-0">No availability rules yet. Use the form above to add the first rule.</p>;
+    return <p className="text-secondary mb-0">No availability rules yet. Click Add rule to create the first one.</p>;
   }
 
   return (
@@ -35,12 +35,17 @@ export default function AvailabilityRulesList({ rules, resourceId, returnBase })
                   )}
                 </div>
               </div>
-              <form action="/availability-rule-actions/delete" method="post">
-                <input type="hidden" name="id" value={rule.id} />
-                <input type="hidden" name="resource_id" value={resourceId} />
-                {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
-                <button className="btn btn-outline-danger btn-sm" type="submit">Delete</button>
-              </form>
+              <div className="d-flex gap-2">
+                <a className="btn btn-outline-secondary btn-sm" href={`${returnBase}&edit_rule=${rule.id}`}>
+                  Edit
+                </a>
+                <form action="/availability-rule-actions/delete" method="post">
+                  <input type="hidden" name="id" value={rule.id} />
+                  <input type="hidden" name="resource_id" value={resourceId} />
+                  {returnBase && <input type="hidden" name="return_base" value={returnBase} />}
+                  <button className="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
