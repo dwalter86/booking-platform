@@ -6,10 +6,7 @@ const navItems = [
   ['Resources', '/resources'],
   ['Bookings', '/bookings'],
   ['Calendar', '/calendar'],
-  ['Admin Users', '/admin-users'],
-  ['Plans', '/plans'],
-  ['Audit Log', '/audit-log'],
-  ['Settings', '/settings'],
+  ['Settings', '/administration'],
 ];
 
 export default function LayoutShell({ title, headerAction, children }) {

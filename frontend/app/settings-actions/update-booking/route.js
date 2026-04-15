@@ -47,11 +47,11 @@ export async function POST(request) {
     if (!response.ok) {
       const data    = await response.json().catch(() => ({}));
       const message = encodeURIComponent(data?.error || 'Unable to update booking settings');
-      return NextResponse.redirect(new URL(`/settings?error=${message}`, baseUrl), 302);
+      return NextResponse.redirect(new URL(`/administration?tab=settings&error=${message}`, baseUrl), 302);
     }
   } catch {
-    return NextResponse.redirect(new URL('/settings?error=API+unavailable', baseUrl), 302);
+    return NextResponse.redirect(new URL('/administration?tab=settings&error=API+unavailable', baseUrl), 302);
   }
 
-  return NextResponse.redirect(new URL('/settings?success=Booking+settings+updated', baseUrl), 302);
+  return NextResponse.redirect(new URL('/administration?tab=settings&success=Booking+settings+updated', baseUrl), 302);
 }
