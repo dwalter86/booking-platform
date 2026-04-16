@@ -138,7 +138,8 @@ export default async function TenantDetailPage({ params, searchParams }) {
               <span className={`badge ${
                 sub.status === 'active'   ? 'bg-success' :
                 sub.status === 'trial'    ? 'bg-info'    :
-                sub.status === 'past_due' ? 'bg-warning' : 'bg-secondary'
+                sub.status === 'grace'    ? 'bg-warning' :
+                sub.status === 'past_due' ? 'bg-danger' :  'bg-secondary'
               }`}>
                 {sub.status || '—'}
               </span>
@@ -177,6 +178,7 @@ export default async function TenantDetailPage({ params, searchParams }) {
               <select className="form-select" name="status" defaultValue="">
                 <option value="">— no change —</option>
                 <option value="trial">Trial</option>
+                <option value="grace">Grace period</option>
                 <option value="active">Active</option>
                 <option value="past_due">Past due</option>
                 <option value="cancelled">Cancelled</option>

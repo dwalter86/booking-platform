@@ -427,7 +427,7 @@ router.patch('/tenants/:id/subscription', asyncHandler(async (req, res) => {
 
   // Manual status override
   if (status) {
-    const validStatuses = ['trial', 'active', 'past_due', 'cancelled'];
+    const validStatuses = ['trial', 'grace', 'active', 'past_due', 'cancelled'];
     if (!validStatuses.includes(status)) {
       throw new AppError(400, `status must be one of: ${validStatuses.join(', ')}`);
     }

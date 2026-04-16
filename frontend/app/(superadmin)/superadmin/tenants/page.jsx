@@ -93,6 +93,9 @@ export default async function TenantsPage({ searchParams }) {
                         {t.subscription_status === 'trial' && (
                           <span className="badge bg-info-lt ms-1">trial</span>
                         )}
+                        {t.subscription_status === 'grace' && (
+                          <span className="badge bg-warning-lt ms-1">grace</span>
+                        )}
                       </td>
                       <td>
                         {t.current_period_end

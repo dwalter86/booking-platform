@@ -29,7 +29,7 @@ export async function getTenantBySubdomain(subdomain) {
 }
 
 export async function resolveTenantEntitlement(tenantId) {
-  const GRACE_PERIOD_DAYS = 7;
+  const GRACE_PERIOD_DAYS = 14;
   
   const { rows } = await query(
     `SELECT
@@ -66,7 +66,7 @@ export async function resolveTenantEntitlement(tenantId) {
      FROM public.tenants t
      LEFT JOIN public.tenant_subscriptions s
        ON s.tenant_id = t.id
-       AND s.status IN ('trial', 'active', 'past_due')
+       AND s.status IN ('trial', 'grace', 'active', 'past_due')
      LEFT JOIN public.plans p ON p.id = s.plan_id
      WHERE t.id = $1
      ORDER BY s.created_at DESC
@@ -121,6 +121,19 @@ export async function resolveTenantEntitlement(tenantId) {
     }
 
     const graceEnd           = new Date(periodEnd);
+    graceEnd.setDate(graceEnd.getDate() + GRACE_PERIOD_DAYS);
+    const graceDaysRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24));
+
+    if (now <= graceEnd) {
+      return { state: 'trial_grace', ...base, graceDaysRemaining };
+    }
+
+    return blocked('Trial expired');
+  }
+  
+  if (row.subscription_status === 'grace') {
+    const now      = new Date();
+    const graceEnd = new Date(row.current_period_end);
     graceEnd.setDate(graceEnd.getDate() + GRACE_PERIOD_DAYS);
     const graceDaysRemaining = Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24));
 
