@@ -53,7 +53,11 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
         id: req.tenant.id,
         name: req.tenant.name,
         slug: req.tenant.slug,
-        subdomain: req.tenant.subdomain
+        subdomain: req.tenant.subdomain,
+        public_booking_enabled: req.tenant.public_booking_enabled,
+        logo_url: req.tenant.logo_url,
+        brand_colour: req.tenant.brand_colour,
+        booking_confirmation_message: req.tenant.booking_confirmation_message
       },
       resources: resourcesResult.rows
     });

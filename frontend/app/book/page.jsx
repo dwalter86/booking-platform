@@ -51,6 +51,31 @@ export default async function PublicBookingPage({ searchParams }) {
     getResources(subdomain),
     getDraft(subdomain, draftToken),
   ]);
+  
+  const tenantLogoUrl    = tenant?.logo_url     || '';
+  const tenantBrandColour = tenant?.brand_colour || '';
+
+  if (tenant && tenant.public_booking_enabled === false) {
+    return (
+      <div className="page page-center">
+        <div className="container py-4">
+          <div className="row justify-content-center">
+            <div className="col-lg-6 text-center">
+              <div className="card">
+                <div className="card-body py-5">
+                  <div className="mb-3" style={{ fontSize: 48 }}>🔒</div>
+                  <h3>{tenant.name}</h3>
+                  <p className="text-muted">
+                    Online booking is not currently available. Please contact us directly to make a booking.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );  
+  }
 
   return (
     <div className="page page-center">
@@ -58,10 +83,19 @@ export default async function PublicBookingPage({ searchParams }) {
         <div className="row justify-content-center">
           <div className="col-lg-10">
             <div className="card">
-              <div className="card-header">
-                <h2 className="card-title">
-                  {tenant?.name ? `Book with ${tenant.name}` : 'Make a booking'}
-                </h2>
+              <div className="card-header" style={tenantBrandColour ? { borderTop: `3px solid ${tenantBrandColour}` } : {}}>
+                <div className="d-flex align-items-center gap-3">
+                  {tenantLogoUrl && (
+                    <img
+                      src={tenantLogoUrl}
+                      alt=""
+                      style={{ height: 36, width: 'auto', objectFit: 'contain' }}
+                    />
+                  )}
+                  <h2 className="card-title mb-0">
+                    {tenant?.name ? `Book with ${tenant.name}` : 'Make a booking'}
+                  </h2>
+                </div>
               </div>
               <div className="card-body">
                 <PublicBookingCalendarClient
@@ -70,6 +104,9 @@ export default async function PublicBookingPage({ searchParams }) {
                   initialDraft={draft}
                   draftExpired={draftExpired}
                   draftToken={draftToken}
+                  confirmationMessage={tenant?.booking_confirmation_message || ''}
+                  tenantLogoUrl={tenant?.logo_url || ''}
+                  tenantBrandColour={tenant?.brand_colour || ''}
                 />
               </div>
             </div>

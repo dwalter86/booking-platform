@@ -265,6 +265,9 @@ export default function PublicBookingCalendarClient({
   initialDraft = null,
   draftExpired = false,
   draftToken = null,
+  confirmationMessage = '',
+  tenantLogoUrl = '',
+  tenantBrandColour = '',
 }) {
   // Step state
   const [step, setStep] = useState(1);
@@ -562,7 +565,9 @@ export default function PublicBookingCalendarClient({
         <div className="mb-3" style={{ fontSize: 48 }}>✓</div>
         <h3>Booking request received</h3>
         <p className="text-muted">
-          Thanks {firstName} — we'll be in touch at {email} to confirm your booking.
+          {confirmationMessage
+            ? confirmationMessage
+            : `Thanks ${firstName} — we'll be in touch at ${email} to confirm your booking.`}
         </p>
         <a href="/book" className="btn btn-outline-primary mt-2">Make another booking</a>
       </div>
