@@ -21,6 +21,7 @@ import availabilityExceptionsRouter from './routes/availability-exceptions.js';
 import entitlementRoutes from './routes/entitlement.js';
 import superAdminRoutes from './routes/superadmin.js';
 import tenantProfileRoutes from './routes/tenant-profile.js';
+import tenantLogoRoutes from './routes/tenant-logo.js';
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use('/api/availability-rules', availabilityRulesRouter);
 app.use('/api/availability-exceptions', availabilityExceptionsRouter);
 app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/tenant/profile', tenantProfileRoutes);
+app.use('/api/tenant/logo', tenantLogoRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });

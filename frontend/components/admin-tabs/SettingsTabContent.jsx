@@ -63,6 +63,36 @@ export default function SettingsTabContent({ tenant, entitlement, resourceCount,
         </div>
       </div>
 
+      {/* Logo upload */}
+      <DataCard title="Logo">
+        <div className="row g-3 align-items-center">
+          {tenant.logo_url && (
+            <div className="col-auto">
+              <img
+                src={tenant.logo_url}
+                alt="Current logo"
+                style={{ height: 60, width: 'auto', objectFit: 'contain', border: '1px solid #dee2e6', borderRadius: 4, padding: 4 }}
+              />
+            </div>
+          )}
+          <div className="col">
+            <form action="/settings-actions/upload-logo" method="post" encType="multipart/form-data">
+              <div className="d-flex gap-2 align-items-center flex-wrap">
+                <input
+                  className="form-control"
+                  type="file"
+                  name="logo"
+                  accept=".webp,.png,.jpg,.jpeg,.svg,image/webp,image/png,image/jpeg,image/svg+xml"
+                  style={{ maxWidth: 300 }}
+                />
+                <button className="btn btn-primary" type="submit">Upload</button>
+              </div>
+              <div className="form-hint mt-1">Accepted formats: WebP, PNG, JPG, SVG. Max 2MB.</div>
+            </form>
+          </div>
+        </div>
+      </DataCard>
+
       {/* Profile */}
       <DataCard title="Business profile">
         <form action="/settings-actions/update" method="post">
@@ -88,12 +118,6 @@ export default function SettingsTabContent({ tenant, entitlement, resourceCount,
               <input className="form-control" type="text" name="timezone"
                 defaultValue={asValue(tenant.timezone, 'Europe/London')}
                 placeholder="e.g. Europe/London" />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Logo URL</label>
-              <input className="form-control" type="url" name="logo_url"
-                defaultValue={asValue(tenant.logo_url)}
-                placeholder="https://example.com/logo.png" />
             </div>
             <div className="col-md-6">
               <label className="form-label">Brand colour</label>
