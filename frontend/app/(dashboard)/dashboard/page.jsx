@@ -7,20 +7,17 @@ import { formatDateTime } from '../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS_BADGE = {
-  confirmed:   'bg-success',
-  cancelled:   'bg-danger',
-  canceled:    'bg-danger',
-  pending:     'bg-warning',
-  rejected:    'bg-danger',
-  provisional: 'bg-secondary',
-};
+function badgeClass(status) {
+  if (status === 'confirmed') return 'bg-green-lt';
+  if (status === 'cancelled') return 'bg-red-lt';
+  return 'bg-yellow-lt';
+}
 
 async function load() {
   await requireAuth();
   const [resourcesRes, bookingsRes, tenantRes, blocksRes] = await Promise.all([
     apiFetch('/api/resources'),
-    apiFetch('/api/bookings'),
+    apiFetch('/api/bookings?per_page=5'),
     apiFetch('/api/tenant/profile'),
     apiFetch('/api/unavailability-blocks'),
   ]);
@@ -45,12 +42,12 @@ async function load() {
       allRulesByResource[resources[i].id] = Array.isArray(raw) ? raw : (raw.data || []);
     }
   }
-  const rules = allRulesByResource[resources[0]?.id] || [];
+  const hasAnyRules = Object.values(allRulesByResource).some(r => r.length > 0);
 
-  return { resources, bookings, totalBookings, tenant, rules, unavailabilityBlocks, allRulesByResource };
+  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource };
 }
 
-function OnboardingChecklist({ tenant, resources, rules }) {
+function OnboardingChecklist({ tenant, resources, hasAnyRules }) {
   const steps = [
     {
       key:      'profile',
@@ -71,7 +68,7 @@ function OnboardingChecklist({ tenant, resources, rules }) {
       label:    'Configure availability rules',
       detail:   'Define when your resource is open for bookings',
       href:     '/availability-rules',
-      complete: rules.length > 0,
+      complete: hasAnyRules,
     },
     {
       key:      'booking',
@@ -155,14 +152,14 @@ function OnboardingChecklist({ tenant, resources, rules }) {
 }
 
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, tenant, rules, unavailabilityBlocks, allRulesByResource } = await load();
+  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
-  const rulesComplete    = rules.length > 0;
+  const rulesComplete    = hasAnyRules;
   const bookingComplete  = Boolean(tenant?.public_booking_enabled);
   const allComplete      = profileComplete && resourceComplete && rulesComplete && bookingComplete;
-  const hideChecklist    = allComplete && totalBookings > 5;
+  const hideChecklist    = allComplete;
 
   return (
     <LayoutShell title="Dashboard">
@@ -170,13 +167,13 @@ export default async function DashboardPage() {
         <OnboardingChecklist
           tenant={tenant}
           resources={resources}
-          rules={rules}
+          hasAnyRules={hasAnyRules}
         />
       )}
 
       <div className="row mb-4">
         <div className="col-12">
-          <DashboardCalendarClient bookings={bookings} unavailabilityBlocks={unavailabilityBlocks} resources={resources} availabilityRulesByResource={allRulesByResource} />
+          <DashboardCalendarClient unavailabilityBlocks={unavailabilityBlocks} resources={resources} availabilityRulesByResource={allRulesByResource} />
         </div>
       </div>
 
@@ -185,16 +182,18 @@ export default async function DashboardPage() {
           <DataCard
             title="Recent bookings"
             footer={<a href="/bookings">View all bookings →</a>}
+            headerStyle={{ backgroundColor: '#1e2a78', color: '#ffffff' }}
           >
             <div className="table-responsive">
               <table className="table table-vcenter">
                 <thead>
                   <tr>
-                    <th>Reference</th>
                     <th>Customer</th>
+                    <th>Booked</th>
                     <th>Status</th>
                     <th>Start</th>
                     <th>End</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -202,15 +201,18 @@ export default async function DashboardPage() {
                     <tr><td colSpan="5" className="text-secondary">No bookings yet.</td></tr>
                   ) : bookings.slice(0, 5).map((row) => (
                     <tr key={row.id}>
-                      <td className="text-monospace">{row.reference_code || row.id}</td>
                       <td>{row.customer_name || <span className="text-secondary">—</span>}</td>
+                      <td>{formatDateTime(row.created_at)}</td>
                       <td>
-                        <span className={`badge text-white ${STATUS_BADGE[row.status] ?? 'bg-secondary'}`}>
+                        <span className={`badge ${badgeClass(row.status)}`}>
                           {row.status}
                         </span>
                       </td>
                       <td>{formatDateTime(row.start_at)}</td>
                       <td>{formatDateTime(row.end_at)}</td>
+                      <td>
+                        <a href={`/bookings?booking_id=${row.id}`} className="btn btn-sm btn-outline-primary">View</a>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

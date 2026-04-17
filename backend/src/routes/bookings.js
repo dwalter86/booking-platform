@@ -170,7 +170,7 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
          ON r.id = b.resource_id
         AND r.tenant_id = b.tenant_id
        WHERE ${where.join(' AND ')}
-       ORDER BY b.start_at DESC, b.created_at DESC
+       ORDER BY b.created_at DESC, b.start_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );

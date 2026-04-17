@@ -78,12 +78,14 @@ function DonutChart({ count, capacity }) {
   );
 }
 
-export default function DashboardCalendarClient({ bookings = [], unavailabilityBlocks = [], resources = [], availabilityRulesByResource = {} }) {
+
+export default function DashboardCalendarClient({ unavailabilityBlocks = [], resources = [], availabilityRulesByResource = {} }) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const [calApi, setCalApi] = useState(null);
   const [dateRangeLabel, setDateRangeLabel] = useState(computeInitialRange);
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [bookings, setBookings] = useState([]);
 
   const selectedDateLabel = useMemo(() => {
     return new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
@@ -145,20 +147,20 @@ export default function DashboardCalendarClient({ bookings = [], unavailabilityB
       `}</style>
 
       <div className="card mb-4">
-        <div className="card-header">
-          <h3 className="card-title mb-0">
+        <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
+          <h3 className="card-title mb-0" style={{ color: '#ffffff' }}>
             Bookings Calendar{dateRangeLabel ? ` - ${dateRangeLabel}` : ''}
           </h3>
           <div className="card-options">
             <div className="btn-group">
-              <button className="btn btn-sm btn-outline-secondary" onClick={handlePrev} aria-label="Previous">
+              <button className="btn btn-sm" style={{ color: '#ffffff', borderColor: '#ffffff', backgroundColor: 'transparent' }} onClick={handlePrev} aria-label="Previous">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none">
                   <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                   <path d="M15 6l-6 6l6 6" />
                 </svg>
               </button>
-              <button className="btn btn-sm btn-outline-secondary" onClick={handleToday}>Today</button>
-              <button className="btn btn-sm btn-outline-secondary" onClick={handleNext} aria-label="Next">
+              <button className="btn btn-sm" style={{ color: '#ffffff', borderColor: '#ffffff', backgroundColor: 'transparent' }} onClick={handleToday}>Today</button>
+              <button className="btn btn-sm" style={{ color: '#ffffff', borderColor: '#ffffff', backgroundColor: 'transparent' }} onClick={handleNext} aria-label="Next">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none">
                   <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                   <path d="M9 6l6 6l-6 6" />
@@ -184,6 +186,11 @@ export default function DashboardCalendarClient({ bookings = [], unavailabilityB
             datesSet={(info) => {
               setCalApi(info.view.calendar);
               setDateRangeLabel(formatDateRange(info.start, info.end));
+              const from = info.start.toISOString().slice(0, 10);
+              const to   = info.end.toISOString().slice(0, 10);
+              fetch(`/api/bookings/list?per_page=100&date_from=${from}&date_to=${to}`)
+                .then(r => r.ok ? r.json() : {})
+                .then(data => setBookings(Array.isArray(data) ? data : (data.data || [])));
             }}
           />
         </div>
