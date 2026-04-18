@@ -4,8 +4,8 @@ import AvailabilityRulesList from '../../../components/AvailabilityRulesList';
 import AvailabilityExceptionsList from '../../../components/AvailabilityExceptionsList';
 import UnavailabilityBlocksList from '../../../components/UnavailabilityBlocksList';
 import { apiFetch, requireAuth } from '../../../lib/auth';
-
-export const dynamic = 'force-dynamic';
+import DayOfWeekSelector from '../../../components/DayOfWeekSelector';
+import AllDayToggle from '../../../components/AllDayToggle';
 
 const DAYS = [
   { value: 0, label: 'Sunday' },
@@ -16,6 +16,8 @@ const DAYS = [
   { value: 5, label: 'Friday' },
   { value: 6, label: 'Saturday' },
 ];
+
+export const dynamic = 'force-dynamic';
 
 function asValue(value, fallback = '') {
   return value === null || value === undefined ? fallback : String(value);
@@ -94,8 +96,8 @@ export default async function ResourcesPage({ searchParams }) {
       <div className="row g-4">
         <div className={selectedResource || isAdding ? 'col-lg-7' : 'col-12'}>
           <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Resource list</h3>
+            <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
+              <h3 className="card-title" style={{ color: '#ffffff' }}>Resource list</h3>
             </div>
             <div className="table-responsive">
               <table className="table table-vcenter card-table">
@@ -146,7 +148,7 @@ export default async function ResourcesPage({ searchParams }) {
                               Availability
                             </Link>
                             <Link
-                              className={`btn btn-sm ${isUnavailSelected ? 'btn-warning' : 'btn-outline-warning'}`}
+                              className={`btn btn-sm ${isUnavailSelected ? 'btn-danger' : 'btn-outline-danger'}`}
                               href={`/resources?resource_id=${row.id}&panel=unavailability`}
                             >
                               Unavailability
@@ -165,8 +167,8 @@ export default async function ResourcesPage({ searchParams }) {
         {(selectedResource || isAdding) && (
         <div className="col-lg-5 panel-slide-in">
           <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h3 className="card-title">
+            <div className="card-header d-flex align-items-center justify-content-between" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
+              <h3 className="card-title" style={{ color: '#ffffff' }}>
                 {isAdding
                   ? 'New resource'
                   : isAvailabilityPanel && selectedResource
@@ -178,18 +180,9 @@ export default async function ResourcesPage({ searchParams }) {
                         : 'Resource details'}
               </h3>
               <div className="d-flex align-items-center gap-2">
-                {selectedResource && !panel && (
-                  <form action="/resource-actions/delete" method="post">
-                    <input type="hidden" name="id" value={selectedResource.id} />
-                    <button className="btn btn-sm btn-outline-danger" type="submit">Delete</button>
-                  </form>
-                )}
-                {(isAvailabilityPanel || isUnavailabilityPanel) && selectedResource && (
-                  <Link className="btn btn-sm btn-outline-secondary" href={`/resources?resource_id=${selectedResource.id}`}>
-                    Edit resource
-                  </Link>
-                )}
-                <Link href="/resources" className="btn-close" aria-label="Close" />
+                <Link href="/resources" className="btn btn-sm btn-outline-light" aria-label="Close">
+                Close
+                </Link>
               </div>
             </div>
             <div className="card-body">
@@ -285,32 +278,7 @@ export default async function ResourcesPage({ searchParams }) {
                         <div className="row g-2">
                           <div className="col-12">
                             <label className="form-label d-block mb-1">Days of week</label>
-                            <div className="mb-2">
-                              <input type="checkbox" className="btn-check" name="day_of_week" value="all" id="dow_all" autoComplete="off" />
-                              <label className="btn btn-outline-secondary btn-sm w-100" htmlFor="dow_all">Every day</label>
-                            </div>
-                            <div className="btn-group w-100" role="group">
-                              {DAYS.map((d) => (
-                                <>
-                                  <input key={`i${d.value}`} type="checkbox" className="btn-check dow-day" name="day_of_week" value={d.value} id={`dow_${d.value}`} autoComplete="off" />
-                                  <label key={`l${d.value}`} className="btn btn-outline-primary btn-sm" htmlFor={`dow_${d.value}`}>{d.label.slice(0, 3)}</label>
-                                </>
-                              ))}
-                            </div>
-                            <script dangerouslySetInnerHTML={{ __html: `
-                              (function() {
-                                var allBox = document.getElementById('dow_all');
-                                var dayBoxes = Array.from(document.querySelectorAll('.dow-day'));
-                                allBox.addEventListener('change', function() {
-                                  dayBoxes.forEach(function(cb) { cb.checked = allBox.checked; });
-                                });
-                                dayBoxes.forEach(function(cb) {
-                                  cb.addEventListener('change', function() {
-                                    allBox.checked = dayBoxes.every(function(c) { return c.checked; });
-                                  });
-                                });
-                              })();
-                            ` }} />
+                            <DayOfWeekSelector />
                           </div>
                           <div className="col-6">
                             <label className="form-label">Open from</label>
@@ -321,20 +289,8 @@ export default async function ResourcesPage({ searchParams }) {
                             <input className="form-control" type="time" name="end_time" id="add_rule_end" required />
                           </div>
                           <div className="col-12">
-                            <input type="checkbox" className="btn-check" id="add_rule_allday" autoComplete="off" />
-                            <label className="btn btn-outline-secondary btn-sm" htmlFor="add_rule_allday">All day</label>
+                            <AllDayToggle startId="add_rule_start" endId="add_rule_end" />
                           </div>
-                          <script dangerouslySetInnerHTML={{ __html: `
-                            (function() {
-                              var cb = document.getElementById('add_rule_allday');
-                              var s = document.getElementById('add_rule_start');
-                              var e = document.getElementById('add_rule_end');
-                              cb.addEventListener('change', function() {
-                                if (cb.checked) { s.value = '00:00'; e.value = '23:59'; s.readOnly = true; e.readOnly = true; }
-                                else { s.value = ''; e.value = ''; s.readOnly = false; e.readOnly = false; }
-                              });
-                            })();
-                          ` }} />
                           {selectedResource.booking_mode !== 'free' && (
                           <>
                           <div className="col-6">
@@ -390,20 +346,8 @@ export default async function ResourcesPage({ searchParams }) {
                             <input className="form-control" type="time" name="end_time" id="edit_rule_end" defaultValue={editingRule.end_time?.slice(0, 5)} readOnly={isAllDay} required />
                           </div>
                           <div className="col-12">
-                            <input type="checkbox" className="btn-check" id="edit_rule_allday" defaultChecked={isAllDay} autoComplete="off" />
-                            <label className="btn btn-outline-secondary btn-sm" htmlFor="edit_rule_allday">All day</label>
+                            <AllDayToggle startId="edit_rule_start" endId="edit_rule_end" defaultChecked={isAllDay} />
                           </div>
-                          <script dangerouslySetInnerHTML={{ __html: `
-                            (function() {
-                              var cb = document.getElementById('edit_rule_allday');
-                              var s = document.getElementById('edit_rule_start');
-                              var e = document.getElementById('edit_rule_end');
-                              cb.addEventListener('change', function() {
-                                if (cb.checked) { s.value = '00:00'; e.value = '23:59'; s.readOnly = true; e.readOnly = true; }
-                                else { s.value = ''; e.value = ''; s.readOnly = false; e.readOnly = false; }
-                              });
-                            })();
-                          ` }} />
                           </> ); })()}
                           {selectedResource.booking_mode !== 'free' && (
                           <>
@@ -615,8 +559,12 @@ export default async function ResourcesPage({ searchParams }) {
                         <span className="form-check-label">Resource is active</span>
                       </label>
                     </div>
-                    <div className="col-12">
+                    <div className="col-12 d-flex justify-content-between align-items-center">
                       <button className="btn btn-primary" type="submit">Save changes</button>
+                      <form action="/resource-actions/delete" method="post">
+                        <input type="hidden" name="id" value={selectedResource.id} />
+                        <button className="btn btn-outline-danger" type="submit">Delete</button>
+                      </form>
                     </div>
                   </div>
                 </form>

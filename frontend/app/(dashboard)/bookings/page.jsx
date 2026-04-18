@@ -1,77 +1,9 @@
-export const dynamic = 'force-dynamic';
-
-import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { config } from '../../../lib/config';
-import { headers } from 'next/headers';
 import LayoutShell from '../../../components/LayoutShell';
 import { formatDateTime } from '../../../lib/format';
+import { requireAuth, apiFetch } from '../../../lib/auth';
 
-function getTenantSubdomain() {
-  const headerStore   = headers();
-  const forwardedHost = headerStore.get('x-forwarded-host');
-  const hostHeader    = forwardedHost || headerStore.get('host') || 'localhost';
-  return hostHeader.split(':')[0].split('.')[0] || null;
-}
-
-async function getBookings(searchParams) {
-  const token = cookies().get('booking_admin_token')?.value;
-  if (!token) {
-    return { bookings: [], error: 'Session expired. Please sign in again.' };
-  }
-
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams || {})) {
-    if (key === 'booking_id') continue;
-    if (typeof value === 'string' && value.trim()) {
-      query.set(key, value.trim());
-    }
-  }
-
-  const url = `${config.apiBaseUrl}/api/bookings${query.toString() ? `?${query.toString()}` : ''}`;
-
-  try {
-    const subdomain = getTenantSubdomain();
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(subdomain ? { 'x-tenant-subdomain': subdomain } : {}),
-      },
-      cache: 'no-store'
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return { bookings: [], pagination: null, error: data?.error || 'Unable to load bookings.' };
-    }
-
-    return { bookings: Array.isArray(data.data) ? data.data : [], pagination: data.pagination || null, error: '' };
-  } catch {
-    return { bookings: [], pagination: null, error: 'Booking API unavailable.' };
-  }
-}
-
-async function getResources() {
-  const token = cookies().get('booking_admin_token')?.value;
-  if (!token) return [];
-
-  try {
-    const subdomain = getTenantSubdomain();
-    const response = await fetch(`${config.apiBaseUrl}/api/resources`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(subdomain ? { 'x-tenant-subdomain': subdomain } : {}),
-      },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) return [];
-    const data = await response.json().catch(() => []);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
+export const dynamic = 'force-dynamic';
 
 function formatDateTimeLocal(value) {
   if (!value) return '';
@@ -87,10 +19,26 @@ function badgeClass(status) {
 }
 
 export default async function BookingsPage({ searchParams }) {
-  const [{ bookings, pagination, error }, resources] = await Promise.all([
-    getBookings(searchParams),
-    getResources()
+  await requireAuth();
+
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams || {})) {
+    if (key === 'booking_id') continue;
+    if (typeof value === 'string' && value.trim()) {
+      query.set(key, value.trim());
+    }
+  }
+
+  const [bookingsRes, resourcesRes] = await Promise.all([
+    apiFetch(`/api/bookings${query.toString() ? `?${query.toString()}` : ''}`),
+    apiFetch('/api/resources'),
   ]);
+
+  const bookingsData = bookingsRes.ok ? await bookingsRes.json().catch(() => ({})) : {};
+  const bookings = Array.isArray(bookingsData.data) ? bookingsData.data : [];
+  const pagination = bookingsData.pagination || null;
+  const error = bookingsRes.ok ? '' : (bookingsData?.error || 'Unable to load bookings.');
+  const resources = resourcesRes.ok ? await resourcesRes.json().catch(() => []) : [];
 
   const selectedBookingId = searchParams?.booking_id || '';
   const selectedBooking = bookings.find((b) => b.id === selectedBookingId) || null;
@@ -160,8 +108,8 @@ export default async function BookingsPage({ searchParams }) {
       <div className="row g-4">
         <div className={selectedBooking ? 'col-lg-7' : 'col-12'}>
           <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Booking list</h3>
+            <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
+              <h3 className="card-title" style={{ color: '#ffffff' }}>Booking list</h3>
             </div>
             <div className="table-responsive">
               <table className="table table-vcenter card-table">
@@ -237,29 +185,31 @@ export default async function BookingsPage({ searchParams }) {
         {selectedBooking && (
         <div className="col-lg-5 panel-slide-in">
           <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h3 className="card-title">{isEditMode ? 'Edit booking' : 'Booking details'}</h3>
+            <div className="card-header d-flex align-items-center justify-content-between" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
+              <h3 className="card-title" style={{ color: '#ffffff' }}>{isEditMode ? 'Edit booking' : 'Booking details'}</h3>
               <div className="d-flex align-items-center gap-2">
                 {!isEditMode ? (
                   <Link
                     href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), edit: '1' }).toString()}`}
-                    className="btn btn-sm btn-outline-secondary"
+                    className="btn btn-sm btn-outline-light"
                   >
                     Edit
                   </Link>
                 ) : (
                   <Link
                     href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
-                    className="btn btn-sm btn-outline-secondary"
+                    className="btn btn-sm btn-outline-light"
                   >
                     View
                   </Link>
                 )}
                 <Link
                   href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))).toString()}`}
-                  className="btn-close"
+                  className="btn btn-sm btn-outline-light"
                   aria-label="Close"
-                />
+               >
+               Close
+               </Link> 
               </div>
             </div>
             <div className="card-body">

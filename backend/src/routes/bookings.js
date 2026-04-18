@@ -1,4 +1,4 @@
-import { Router } from 'express';
+	import { Router } from 'express';
 import { asyncHandler, AppError } from '../lib/errors.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { withTenantContext } from '../lib/db.js';
@@ -131,7 +131,7 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
 
     if (dateTo) {
       params.push(dateTo);
-      where.push(`b.start_at <= $${params.length}::timestamptz`);
+      where.push(`b.start_at < ($${params.length}::date + interval '1 day')`);
     }
 
     if (bookingId) {
