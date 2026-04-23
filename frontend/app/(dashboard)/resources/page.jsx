@@ -83,7 +83,7 @@ export default async function ResourcesPage({ searchParams }) {
     : '';
 
   const addResourceButton = (
-    <Link className="btn btn-primary" href="/resources?add=1">
+    <Link className="btn btn-sm btn-primary" href="/resources?add=1">
       Add resource
     </Link>
   );

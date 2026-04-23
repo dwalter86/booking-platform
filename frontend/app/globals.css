@@ -86,3 +86,35 @@ pre {
 .panel-slide-in {
   animation: slideInFromRight 0.2s ease-out;
 }
+
+.fc-event.provisional-event {
+  background-color: transparent !important;
+  border: 2px dashed #f59f00 !important;
+  color: #f59f00 !important;
+}
+
+.fc-event.provisional-event .fc-event-title,
+.fc-event.provisional-event .fc-event-time {
+  color: #f59f00 !important;
+}
+
+.fc-event {
+  cursor: pointer !important;
+}
+
+.fc-daygrid-day,
+.fc-timegrid-slot {
+  cursor: default !important;
+}
+
+.fc-col-header-cell-cushion {
+  cursor: pointer !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.fc-daygrid-day-number {
+  cursor: pointer !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}

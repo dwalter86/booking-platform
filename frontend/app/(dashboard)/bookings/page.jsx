@@ -54,7 +54,7 @@ export default async function BookingsPage({ searchParams }) {
   const filterToggleHref = showFilter ? `/bookings?${filterToggleParams}` : `/bookings?${filterToggleParams}&filter=1`;
 
   const filterButton = (
-    <Link href={filterToggleHref} className={`btn ${hasActiveFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}>
+    <Link href={filterToggleHref} className={`btn btn-sm ${hasActiveFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}>
       Filters{hasActiveFilters ? ' ·' : ''}
     </Link>
   );

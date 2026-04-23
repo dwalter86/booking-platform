@@ -1,6 +1,7 @@
 import LayoutShell from '../../../components/LayoutShell';
 import ErrorAlert from '../../../components/ErrorAlert';
 import AdminCalendarClient from '../../../components/AdminCalendarClient';
+import CalendarViewButtons from '../../../components/CalendarViewButtons';
 import { apiFetch, requireAuth } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -14,27 +15,29 @@ async function loadJson(path) {
   return { ok: true, data, error: '' };
 }
 
-export default async function CalendarPage() {
+export default async function CalendarPage({ searchParams }) {
   await requireAuth();
 
-  const [resourcesResult, bookingsResult, blocksResult] = await Promise.all([
+  const [resourcesResult, blocksResult] = await Promise.all([
     loadJson('/api/resources'),
-    loadJson('/api/bookings'),
     loadJson('/api/unavailability-blocks')
   ]);
 
-  const error = resourcesResult.error || bookingsResult.error || blocksResult.error;
+  const error = resourcesResult.error || blocksResult.error;
   const resources = Array.isArray(resourcesResult.data) ? resourcesResult.data : [];
-  const bookings = Array.isArray(bookingsResult.data?.data) ? bookingsResult.data.data : [];
   const unavailabilityBlocks = Array.isArray(blocksResult.data) ? blocksResult.data : [];
 
+  const initialView = searchParams?.view || 'timeGridWeek';
+
+  const viewButtons = <CalendarViewButtons initialView={initialView} />;
+
   return (
-    <LayoutShell title="Calendar">
+    <LayoutShell title="Calendar" headerAction={viewButtons}>
       <ErrorAlert message={error} />
       <AdminCalendarClient
         resources={resources}
-        bookings={bookings}
         unavailabilityBlocks={unavailabilityBlocks}
+        initialView={initialView}
       />
     </LayoutShell>
   );
