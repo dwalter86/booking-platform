@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { headers } from 'next/headers';
-import PublicBookingCalendarClient from '../../components/PublicBookingCalendarClient';
+import { redirect } from 'next/navigation';
 
 function getTenantSubdomain() {
   const host = headers().get('x-forwarded-host')
@@ -24,37 +24,11 @@ async function getResources(subdomain) {
   }
 }
 
-async function getDraft(subdomain, token) {
-  if (!token) return { draft: null, draftExpired: false };
-  try {
-    const response = await fetch(
-      `http://127.0.0.1:3001/api/public-bookings/draft/${encodeURIComponent(token)}`,
-      {
-        headers: { 'x-tenant-subdomain': subdomain },
-        cache: 'no-store'
-      }
-    );
-    if (!response.ok) return { draft: null, draftExpired: false };
-    const data = await response.json();
-    if (data.expired) return { draft: null, draftExpired: true };
-    return { draft: data, draftExpired: false };
-  } catch {
-    return { draft: null, draftExpired: false };
-  }
-}
-
-export default async function PublicBookingPage({ searchParams }) {
+export default async function PublicBookingIndexPage() {
   const subdomain = getTenantSubdomain();
-  const draftToken = searchParams?.draft || null;
+  const { resources, tenant, error } = await getResources(subdomain);
 
-  const [{ resources, tenant, error }, { draft, draftExpired }] = await Promise.all([
-    getResources(subdomain),
-    getDraft(subdomain, draftToken),
-  ]);
-  
-  const tenantLogoUrl    = tenant?.logo_url     || '';
-  const tenantBrandColour = tenant?.brand_colour || '';
-
+  // Booking disabled
   if (tenant && tenant.public_booking_enabled === false) {
     return (
       <div className="page page-center">
@@ -74,23 +48,43 @@ export default async function PublicBookingPage({ searchParams }) {
           </div>
         </div>
       </div>
-    );  
+    );
   }
+
+  // API error
+  if (error && resources.length === 0) {
+    return (
+      <div className="page page-center">
+        <div className="container py-4">
+          <div className="row justify-content-center">
+            <div className="col-lg-6 text-center">
+              <p className="text-muted">Booking is not available right now. Please try again shortly.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Single resource — redirect straight to its booking page
+  if (resources.length === 1) {
+    redirect(`/book/${resources[0].slug}`);
+  }
+
+  // Multiple resources — show picker
+  const tenantLogoUrl = tenant?.logo_url || '';
+  const tenantBrandColour = tenant?.brand_colour || '';
 
   return (
     <div className="page page-center">
       <div className="container py-4">
         <div className="row justify-content-center">
-          <div className="col-lg-10">
+          <div className="col-lg-8">
             <div className="card">
               <div className="card-header" style={tenantBrandColour ? { borderTop: `3px solid ${tenantBrandColour}` } : {}}>
                 <div className="d-flex align-items-center gap-3">
                   {tenantLogoUrl && (
-                    <img
-                      src={tenantLogoUrl}
-                      alt=""
-                      style={{ height: 36, width: 'auto', objectFit: 'contain' }}
-                    />
+                    <img src={tenantLogoUrl} alt="" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
                   )}
                   <h2 className="card-title mb-0">
                     {tenant?.name ? `Book with ${tenant.name}` : 'Make a booking'}
@@ -98,16 +92,27 @@ export default async function PublicBookingPage({ searchParams }) {
                 </div>
               </div>
               <div className="card-body">
-                <PublicBookingCalendarClient
-                  resources={resources}
-                  apiError={error}
-                  initialDraft={draft}
-                  draftExpired={draftExpired}
-                  draftToken={draftToken}
-                  confirmationMessage={tenant?.booking_confirmation_message || ''}
-                  tenantLogoUrl={tenant?.logo_url || ''}
-                  tenantBrandColour={tenant?.brand_colour || ''}
-                />
+                <p className="text-muted mb-4">Select what you'd like to book:</p>
+                <div className="row g-3">
+                  {resources.map(r => (
+                    <div key={r.id} className="col-md-6">
+                      <a href={`/book/${r.slug}`} className="card card-link h-100" style={{ textDecoration: 'none' }}>
+                        <div className="card-body">
+                          <h4 className="card-title">{r.name}</h4>
+                          {r.description && (
+                            <p className="text-muted small mb-2">{r.description}</p>
+                          )}
+                          <div className="d-flex gap-3 mt-auto" style={{ fontSize: 12, color: '#868e96' }}>
+                            <span>Capacity: {r.capacity}</span>
+                            {r.max_booking_duration_hours && (
+                              <span>Max: {Number(r.max_booking_duration_hours)}h</span>
+                            )}
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

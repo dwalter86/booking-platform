@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+/**
+ * BookingFormClassic — the original Availio booking form.
+ * Refactored from PublicBookingCalendarClient into a single-resource component.
+ * Receives exactly one resource via the resources prop (always resources[0]).
+ * The multi-resource picker has been removed — resource selection now happens
+ * at the URL level (/book/[slug]).
+ */
+
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -72,7 +80,7 @@ function getFirstDayOfMonth(year, month) {
 // Mini calendar component
 // ---------------------------------------------------------------------------
 
-function MiniCalendar({ selectedDate, onSelectDate, closedDates, fullDates, hasRules, resourceId }) {
+function MiniCalendar({ selectedDate, onSelectDate, closedDates, fullDates, hasRules }) {
   const today = localDateStr(new Date());
   const todayDate = new Date();
 
@@ -135,7 +143,6 @@ function MiniCalendar({ selectedDate, onSelectDate, closedDates, fullDates, hasR
           let cursor = 'pointer';
           let fontWeight = isToday ? 600 : 400;
           let borderRadius = 4;
-          let opacity = 1;
 
           if (isSelected) { bg = '#206bc4'; color = '#fff'; }
           else if (isClosed) { bg = '#f9f9f7'; color = '#bbb'; textDecoration = 'line-through'; cursor = 'not-allowed'; }
@@ -150,8 +157,7 @@ function MiniCalendar({ selectedDate, onSelectDate, closedDates, fullDates, hasR
               style={{
                 padding: '5px 2px', fontSize: 12, borderRadius,
                 background: bg, color, textDecoration, cursor,
-                fontWeight, opacity, lineHeight: 1.3,
-                userSelect: 'none',
+                fontWeight, lineHeight: 1.3, userSelect: 'none',
               }}
               title={isClosed ? 'Closed' : isFull ? 'Fully booked' : ''}
             >
@@ -182,12 +188,11 @@ function MiniCalendar({ selectedDate, onSelectDate, closedDates, fullDates, hasR
 }
 
 // ---------------------------------------------------------------------------
-// Slot table — availability_only and hybrid slot view
+// Slot table
 // ---------------------------------------------------------------------------
 
 function SlotTable({ slots, selectedSlot, onSelectSlot, capacity }) {
   const now = new Date();
-  const available = slots.filter(s => !s.blocked && s.is_available && new Date(s.start_at) >= now);
   const all = slots.filter(s => new Date(s.start_at) >= now);
 
   if (all.length === 0) return null;
@@ -259,7 +264,7 @@ function SlotTable({ slots, selectedSlot, onSelectSlot, capacity }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function PublicBookingCalendarClient({
+export default function BookingFormClassic({
   resources = [],
   apiError = '',
   initialDraft = null,
@@ -269,14 +274,20 @@ export default function PublicBookingCalendarClient({
   tenantLogoUrl = '',
   tenantBrandColour = '',
 }) {
+  // Always use the first (and only) resource passed in
+  const selectedResource = resources[0] || null;
+  const resourceId = selectedResource?.id || '';
+
+  const bookingMode = selectedResource?.booking_mode || 'free';
+  const maxHours = selectedResource?.max_booking_duration_hours
+    ? Number(selectedResource.max_booking_duration_hours)
+    : null;
+
   // Step state
   const [step, setStep] = useState(1);
-
-  // Draft
   const [currentDraftToken, setCurrentDraftToken] = useState(draftToken || null);
 
-  // Step 1 form
-  const [resourceId, setResourceId] = useState(initialDraft?.resource_id || resources[0]?.id || '');
+  // Form fields
   const [selectedDate, setSelectedDate] = useState(initialDraft?.preferred_date || null);
   const [firstName, setFirstName] = useState(() => {
     const name = initialDraft?.customer_name || '';
@@ -297,7 +308,7 @@ export default function PublicBookingCalendarClient({
   const [draftSaveError, setDraftSaveError] = useState('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  // Mini calendar data
+  // Calendar data
   const [closedDates, setClosedDates] = useState(new Set());
   const [fullDates, setFullDates] = useState(new Set());
   const [calLoading, setCalLoading] = useState(false);
@@ -319,16 +330,6 @@ export default function PublicBookingCalendarClient({
   // Hybrid tab
   const [hybridTab, setHybridTab] = useState('slot');
 
-  const selectedResource = useMemo(
-    () => resources.find(r => r.id === resourceId) || null,
-    [resources, resourceId]
-  );
-
-  const bookingMode = selectedResource?.booking_mode || 'free';
-  const maxHours = selectedResource?.max_booking_duration_hours
-    ? Number(selectedResource.max_booking_duration_hours)
-    : null;
-
   // Auto-advance to step 2 if draft has all required fields
   useEffect(() => {
     if (initialDraft?.resource_id && initialDraft?.preferred_date && initialDraft?.customer_name && initialDraft?.customer_email) {
@@ -336,10 +337,9 @@ export default function PublicBookingCalendarClient({
     }
   }, []);
 
-  // Fetch per-day availability when resource changes
+  // Fetch per-day availability
   useEffect(() => {
-    if (!resourceId) return;
-    if (!selectedResource?.has_rules) {
+    if (!resourceId || !selectedResource?.has_rules) {
       setClosedDates(new Set());
       setFullDates(new Set());
       return;
@@ -367,7 +367,7 @@ export default function PublicBookingCalendarClient({
       .finally(() => setCalLoading(false));
   }, [resourceId]);
 
-  // Fetch slots for selected date (step 2)
+  // Fetch slots for step 2
   useEffect(() => {
     if (step !== 2 || !resourceId || !selectedDate) return;
     if (bookingMode === 'free') return;
@@ -380,14 +380,12 @@ export default function PublicBookingCalendarClient({
       cache: 'no-store'
     })
       .then(r => r.json())
-      .then(data => {
-        setSlots(data?.slots || []);
-      })
+      .then(data => setSlots(data?.slots || []))
       .catch(() => setSlotsError('Unable to load slots.'))
       .finally(() => setSlotsLoading(false));
   }, [step, resourceId, selectedDate, bookingMode]);
 
-  // Set default free book times when date is selected
+  // Default free times
   useEffect(() => {
     if (selectedDate && bookingMode === 'free') {
       setFreeStart(`${selectedDate}T09:00`);
@@ -395,28 +393,26 @@ export default function PublicBookingCalendarClient({
     }
   }, [selectedDate, bookingMode]);
 
-  // Duration check for free book
+  // Duration cap
   useEffect(() => {
     if (!freeStart || !freeEnd || !maxHours) { setDurationWarning(''); return; }
     const diff = (new Date(freeEnd) - new Date(freeStart)) / 3600000;
     if (diff > maxHours) {
       const snapped = new Date(new Date(freeStart).getTime() + maxHours * 3600000);
       const pad = n => String(n).padStart(2, '0');
-      const snappedStr = `${snapped.getFullYear()}-${pad(snapped.getMonth()+1)}-${pad(snapped.getDate())}T${pad(snapped.getHours())}:${pad(snapped.getMinutes())}`;
-      setFreeEnd(snappedStr);
+      setFreeEnd(`${snapped.getFullYear()}-${pad(snapped.getMonth()+1)}-${pad(snapped.getDate())}T${pad(snapped.getHours())}:${pad(snapped.getMinutes())}`);
       setDurationWarning(`Adjusted to the maximum booking duration of ${formatDuration(maxHours)}.`);
     } else {
       setDurationWarning('');
     }
   }, [freeStart, freeEnd, maxHours]);
 
-  // Navigate to adjacent day
+  // Navigate to adjacent available day
   function navigateDay(direction) {
     if (!selectedDate) return;
     const [y, m, d] = selectedDate.split('-').map(Number);
     const current = new Date(y, m - 1, d);
     let next = addDays(current, direction);
-    // Skip closed and past days
     const today = startOfDay(new Date());
     for (let i = 0; i < 60; i++) {
       const str = localDateStr(next);
@@ -433,12 +429,11 @@ export default function PublicBookingCalendarClient({
     const errors = {};
     if (!firstName.trim()) errors.firstName = true;
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = true;
-    if (!resourceId) errors.resource = true;
     if (!selectedDate) errors.date = true;
     return errors;
   }
 
-  // Submit step 1 — save draft
+  // Save draft and advance to step 2
   async function handleStep1Submit() {
     const errors = validateStep1();
     if (Object.keys(errors).length > 0) {
@@ -475,12 +470,8 @@ export default function PublicBookingCalendarClient({
 
     try {
       let data;
-      try {
-        data = await attemptSave();
-      } catch {
-        // Retry once
-        data = await attemptSave();
-      }
+      try { data = await attemptSave(); }
+      catch { data = await attemptSave(); } // retry once
       setCurrentDraftToken(data.token);
       window.history.replaceState({}, '', `?draft=${data.token}`);
       setFieldErrors({});
@@ -492,7 +483,7 @@ export default function PublicBookingCalendarClient({
     }
   }
 
-  // Submit final booking
+  // Final submit
   async function handleSubmit() {
     setSubmitError('');
     setSubmitting(true);
@@ -547,7 +538,7 @@ export default function PublicBookingCalendarClient({
       }
 
       setSubmitSuccess(true);
-      window.history.replaceState({}, '', '/book');
+      window.history.replaceState({}, '', window.location.pathname);
     } catch {
       setSubmitError('Unable to submit booking. Please check your connection and try again.');
     } finally {
@@ -578,7 +569,7 @@ export default function PublicBookingCalendarClient({
   // Render — API failure
   // ---------------------------------------------------------------------------
 
-  if (apiError && resources.length === 0) {
+  if (apiError && !selectedResource) {
     return (
       <div className="text-center py-4">
         <p className="text-muted mb-3">Booking is not available right now. Please try again shortly.</p>
@@ -590,7 +581,7 @@ export default function PublicBookingCalendarClient({
   }
 
   // ---------------------------------------------------------------------------
-  // Render — step indicators
+  // Step bar
   // ---------------------------------------------------------------------------
 
   const stepBar = (
@@ -634,8 +625,6 @@ export default function PublicBookingCalendarClient({
   // ---------------------------------------------------------------------------
 
   if (step === 1) {
-    const showCards = resources.length <= 4;
-
     return (
       <>
         {stepBar}
@@ -646,14 +635,13 @@ export default function PublicBookingCalendarClient({
           </div>
         )}
 
-        {submitAttempted && Object.keys(fieldErrors).some(k => fieldErrors[k] === true) && (
+        {submitAttempted && Object.keys(fieldErrors).some(k => fieldErrors[k]) && (
           <div className="alert alert-danger">
             Please fill in the required fields:{' '}
             <strong>
               {[
                 fieldErrors.firstName && 'First name',
                 fieldErrors.email && 'Email',
-                fieldErrors.resource && 'Resource',
                 fieldErrors.date && 'Preferred date',
               ].filter(Boolean).join(', ')}
             </strong>
@@ -663,47 +651,6 @@ export default function PublicBookingCalendarClient({
         {draftSaveError && (
           <div className="alert alert-danger">{draftSaveError}</div>
         )}
-
-        {/* Resource selector */}
-        <div className="mb-3">
-          <label className="form-label fw-medium" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#868e96' }}>
-            Resource
-          </label>
-          {showCards ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-              {resources.map(r => (
-                <div
-                  key={r.id}
-                  onClick={() => { setResourceId(r.id); setSelectedDate(null); setSelectedSlot(null); }}
-                  style={{
-                    border: r.id === resourceId ? '2px solid #206bc4' : '1px solid #dee2e6',
-                    borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
-                    background: r.id === resourceId ? '#e8f0fe' : '#fff',
-                  }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</div>
-                  <div style={{ fontSize: 12, color: '#868e96', marginTop: 2 }}>Capacity: {r.capacity}</div>
-                  {r.max_booking_duration_hours && (
-                    <div style={{ fontSize: 11, color: '#868e96' }}>Max: {formatDuration(Number(r.max_booking_duration_hours))}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <select
-              className={`form-select ${fieldErrors.resource ? 'is-invalid' : ''}`}
-              value={resourceId}
-              onChange={e => { setResourceId(e.target.value); setSelectedDate(null); setSelectedSlot(null); }}
-            >
-              <option value="">Select a resource</option>
-              {resources.map(r => (
-                <option key={r.id} value={r.id}>{r.name} (capacity: {r.capacity})</option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        <hr className="my-3" />
 
         <div className="row g-3">
           {/* Details form */}
@@ -774,7 +721,6 @@ export default function PublicBookingCalendarClient({
                 closedDates={closedDates}
                 fullDates={fullDates}
                 hasRules={selectedResource?.has_rules || false}
-                resourceId={resourceId}
               />
             )}
             {selectedDate && (
@@ -807,9 +753,7 @@ export default function PublicBookingCalendarClient({
   // ---------------------------------------------------------------------------
 
   const slotsForDay = slots.filter(s => s.start_at?.startsWith(selectedDate));
-  const availableSlots = slotsForDay.filter(s => !s.blocked && s.is_available && new Date(s.start_at) >= new Date());
   const hasNoSlots = !slotsLoading && slotsForDay.length === 0 && bookingMode !== 'free';
-
   const isCustomTime = bookingMode === 'free' || (bookingMode === 'hybrid' && hybridTab === 'free');
   const submitLabel = isCustomTime ? 'Request this time slot' : 'Submit booking request';
 
@@ -863,12 +807,7 @@ export default function PublicBookingCalendarClient({
             </div>
           )}
           {!slotsLoading && !hasNoSlots && (
-            <SlotTable
-              slots={slotsForDay}
-              selectedSlot={selectedSlot}
-              onSelectSlot={setSelectedSlot}
-              capacity={selectedResource?.capacity || 1}
-            />
+            <SlotTable slots={slotsForDay} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot} capacity={selectedResource?.capacity || 1} />
           )}
         </>
       )}
@@ -882,7 +821,6 @@ export default function PublicBookingCalendarClient({
               {maxHours >= 24 && <span className="text-muted"> &middot; End date can be a later day for multi-day bookings.</span>}
             </div>
           )}
-
           <div className="row g-2 mb-2">
             <div className="col-6">
               <label className="form-label">Start</label>
@@ -892,25 +830,20 @@ export default function PublicBookingCalendarClient({
             <div className="col-6">
               <label className="form-label">End</label>
               <input className="form-control" type="datetime-local" value={freeEnd}
-                min={freeStart}
-                onChange={e => setFreeEnd(e.target.value)} />
+                min={freeStart} onChange={e => setFreeEnd(e.target.value)} />
             </div>
           </div>
-
           {freeStart && freeEnd && (
             <div className="text-muted mb-2" style={{ fontSize: 12 }}>
               Duration: {formatDuration((new Date(freeEnd) - new Date(freeStart)) / 3600000)}
             </div>
           )}
-
           {durationWarning && (
             <div className="alert alert-warning py-2 mb-2" style={{ fontSize: 13 }}>{durationWarning}</div>
           )}
-
           <div className="text-muted mb-3" style={{ fontSize: 12 }}>
             Or drag on the calendar below to set your time.
           </div>
-
           <div className="card mb-3">
             <div className="card-body p-0">
               <FullCalendar
@@ -940,20 +873,10 @@ export default function PublicBookingCalendarClient({
       {bookingMode === 'hybrid' && (
         <>
           <div className="btn-group mb-3" role="group">
-            <button
-              type="button"
-              className={`btn btn-sm ${hybridTab === 'slot' ? 'btn-primary' : 'btn-outline-secondary'}`}
-              onClick={() => setHybridTab('slot')}
-            >
-              Pick a slot
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${hybridTab === 'free' ? 'btn-primary' : 'btn-outline-secondary'}`}
-              onClick={() => setHybridTab('free')}
-            >
-              Custom time <span style={{ fontSize: 10, opacity: 0.7 }}>(advanced)</span>
-            </button>
+            <button type="button" className={`btn btn-sm ${hybridTab === 'slot' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setHybridTab('slot')}>Pick a slot</button>
+            <button type="button" className={`btn btn-sm ${hybridTab === 'free' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setHybridTab('free')}>Custom time <span style={{ fontSize: 10, opacity: 0.7 }}>(advanced)</span></button>
           </div>
 
           {hybridTab === 'slot' && (
@@ -969,12 +892,7 @@ export default function PublicBookingCalendarClient({
                 </div>
               )}
               {!slotsLoading && !hasNoSlots && (
-                <SlotTable
-                  slots={slotsForDay}
-                  selectedSlot={selectedSlot}
-                  onSelectSlot={setSelectedSlot}
-                  capacity={selectedResource?.capacity || 1}
-                />
+                <SlotTable slots={slotsForDay} selectedSlot={selectedSlot} onSelectSlot={setSelectedSlot} capacity={selectedResource?.capacity || 1} />
               )}
             </>
           )}
@@ -1013,15 +931,8 @@ export default function PublicBookingCalendarClient({
       <hr className="mt-3" />
       <div className="d-flex justify-content-end gap-2">
         <button type="button" className="btn btn-outline-secondary"
-          onClick={() => { setStep(1); setSubmitError(''); }}>
-          ← Back
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
+          onClick={() => { setStep(1); setSubmitError(''); }}>← Back</button>
+        <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
           {submitting ? 'Submitting…' : submitLabel}
         </button>
       </div>

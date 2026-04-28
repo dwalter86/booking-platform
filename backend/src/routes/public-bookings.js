@@ -25,6 +25,7 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
         `SELECT
            r.id,
            r.name,
+           r.slug,
            r.description,
            r.capacity,
            r.booking_mode,
@@ -35,6 +36,7 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
            r.is_active,
            r.created_at,
            r.updated_at,
+           r.booking_form_type,
            EXISTS (
              SELECT 1 FROM availability_rules ar
              WHERE ar.resource_id = r.id

@@ -17,6 +17,13 @@ const DAYS = [
   { value: 6, label: 'Saturday' },
 ];
 
+const BOOKING_FORM_OPTIONS = [
+  { value: 'classic',  label: 'Classic',  desc: 'Two-step form with mini calendar and slot table' },
+  { value: 'minimal',  label: 'Minimal',  desc: 'Clean linear wizard — one step at a time' },
+  { value: 'split',    label: 'Split panel', desc: 'Calendar left, form right — Calendly-style' },
+  { value: 'cards',    label: 'Progressive cards', desc: 'Each step revealed as a collapsible card' },
+];
+
 export const dynamic = 'force-dynamic';
 
 function asValue(value, fallback = '') {
@@ -31,6 +38,25 @@ function bookingModeLabel(mode) {
   if (mode === 'availability_only') return 'Availability only';
   if (mode === 'hybrid') return 'Hybrid';
   return 'Free';
+}
+
+function formTypeLabel(type) {
+  return BOOKING_FORM_OPTIONS.find(o => o.value === type)?.label || 'Classic';
+}
+
+// Reusable booking form style selector — used in both create and edit forms
+function BookingFormSelector({ defaultValue = 'classic' }) {
+  return (
+    <div className="col-12">
+      <label className="form-label fw-medium">Booking form style</label>
+      <select className="form-select" name="booking_form_type" defaultValue={defaultValue}>
+        {BOOKING_FORM_OPTIONS.map(o => (
+          <option key={o.value} value={o.value}>{o.label} — {o.desc}</option>
+        ))}
+      </select>
+      <div className="form-text">Controls the layout of the public-facing booking page for this resource.</div>
+    </div>
+  );
 }
 
 export default async function ResourcesPage({ searchParams }) {
@@ -107,13 +133,14 @@ export default async function ResourcesPage({ searchParams }) {
                     <th>Status</th>
                     <th>Capacity</th>
                     <th>Booking mode</th>
+                    <th>Form style</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {!Array.isArray(rows) || rows.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-secondary">No resources found. Click Add resource to create one.</td>
+                      <td colSpan="6" className="text-secondary">No resources found. Click Add resource to create one.</td>
                     </tr>
                   ) : rows.map((row) => {
                     const isEditSelected = row.id === selectedResourceId && !panel;
@@ -133,6 +160,9 @@ export default async function ResourcesPage({ searchParams }) {
                         </td>
                         <td>{row.capacity}</td>
                         <td>{bookingModeLabel(row.booking_mode)}</td>
+                        <td>
+                          <span className="text-secondary small">{formTypeLabel(row.booking_form_type)}</span>
+                        </td>
                         <td>
                           <div className="d-flex gap-1 flex-wrap justify-content-end">
                             <Link
@@ -237,6 +267,10 @@ export default async function ResourcesPage({ searchParams }) {
                       <label className="form-label">Buffer after (mins)</label>
                       <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue="0" />
                     </div>
+
+                    {/* Booking form style */}
+                    <BookingFormSelector defaultValue="classic" />
+
                     <div className="col-12">
                       <label className="form-check">
                         <input className="form-check-input" type="checkbox" name="is_active" defaultChecked />
@@ -501,6 +535,7 @@ export default async function ResourcesPage({ searchParams }) {
                   </div>
                 </div>
               ) : (
+                /* ── Edit resource form ── */
                 <form action="/resource-actions/update" method="post">
                   <input type="hidden" name="id" value={selectedResource.id} />
                   <input type="hidden" name="return_resource_id" value={selectedResource.id} />
@@ -553,6 +588,10 @@ export default async function ResourcesPage({ searchParams }) {
                       <label className="form-label">Buffer after (mins)</label>
                       <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue={asValue(selectedResource.buffer_after_minutes, '0')} />
                     </div>
+
+                    {/* Booking form style */}
+                    <BookingFormSelector defaultValue={asValue(selectedResource.booking_form_type, 'classic')} />
+
                     <div className="col-12">
                       <label className="form-check">
                         <input className="form-check-input" type="checkbox" name="is_active" defaultChecked={checked(selectedResource.is_active)} />

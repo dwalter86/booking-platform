@@ -7,6 +7,8 @@ import { writeAudit } from '../services/audit-service.js';
 
 const router = Router();
 
+const VALID_FORM_TYPES = ['classic', 'minimal', 'split', 'cards'];
+
 router.get('/', requireAuth, asyncHandler(async (req, res) => {
   const rows = await withTenantContext(req.auth.tenant_id, async (client) => {
     const result = await client.query(
@@ -19,6 +21,10 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
 
 router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const data = req.body || {};
+  const formType = VALID_FORM_TYPES.includes(data.booking_form_type)
+    ? data.booking_form_type
+    : 'classic';
+
   const created = await withTenantContext(req.auth.tenant_id, async (client) => {
     const entitlements = await getTenantEntitlements(client, req.auth.tenant_id);
     const currentCountResult = await client.query(`SELECT COUNT(*)::int AS total FROM public.resources`);
@@ -31,10 +37,12 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
       `INSERT INTO public.resources (
          tenant_id, name, slug, description, timezone, is_active, capacity,
          booking_mode, max_booking_duration_hours, min_notice_hours,
-         max_advance_booking_days, buffer_before_minutes, buffer_after_minutes, metadata
+         max_advance_booking_days, buffer_before_minutes, buffer_after_minutes,
+         booking_form_type, metadata
        ) VALUES (
          $1, $2, $3, $4, COALESCE($5, 'UTC'), COALESCE($6, true), COALESCE($7, 1),
-         COALESCE($8, 'free'), $9, COALESCE($10, 0), $11, COALESCE($12, 0), COALESCE($13, 0), COALESCE($14::jsonb, '{}'::jsonb)
+         COALESCE($8, 'free'), $9, COALESCE($10, 0), $11, COALESCE($12, 0), COALESCE($13, 0),
+         COALESCE($14, 'classic'), COALESCE($15::jsonb, '{}'::jsonb)
        ) RETURNING *`,
       [
         req.auth.tenant_id,
@@ -50,6 +58,7 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
         data.max_advance_booking_days || null,
         data.buffer_before_minutes,
         data.buffer_after_minutes,
+        formType,
         JSON.stringify(data.metadata || {})
       ]
     );
@@ -61,10 +70,18 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
 
 router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const updated = await withTenantContext(req.auth.tenant_id, async (client) => {
-    const currentResult = await client.query(`SELECT * FROM public.resources WHERE id = $1`, [req.params.id]);
+    const currentResult = await client.query(
+      `SELECT * FROM public.resources WHERE id = $1 AND tenant_id = $2`,
+      [req.params.id, req.auth.tenant_id]
+    );
     const current = currentResult.rows[0];
     if (!current) throw new AppError(404, 'Resource not found.');
     const data = { ...current, ...(req.body || {}) };
+
+    const formType = VALID_FORM_TYPES.includes(data.booking_form_type)
+      ? data.booking_form_type
+      : 'classic';
+
     const result = await client.query(
       `UPDATE public.resources
           SET name = $2,
@@ -79,8 +96,9 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
               max_advance_booking_days = $11,
               buffer_before_minutes = $12,
               buffer_after_minutes = $13,
-              metadata = $14::jsonb
-        WHERE id = $1
+              booking_form_type = $14,
+              metadata = $15::jsonb
+        WHERE id = $1 AND tenant_id = $16
       RETURNING *`,
       [
         req.params.id,
@@ -96,7 +114,9 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
         data.max_advance_booking_days,
         data.buffer_before_minutes,
         data.buffer_after_minutes,
-        JSON.stringify(data.metadata || {})
+        formType,
+        JSON.stringify(data.metadata || {}),
+        req.auth.tenant_id,
       ]
     );
     await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'resource', req.params.id, 'updated', req.body || {});
@@ -107,7 +127,10 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
 
 router.delete('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   await withTenantContext(req.auth.tenant_id, async (client) => {
-    const deleted = await client.query(`DELETE FROM public.resources WHERE id = $1 RETURNING id`, [req.params.id]);
+    const deleted = await client.query(
+      `DELETE FROM public.resources WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [req.params.id, req.auth.tenant_id]
+    );
     if (!deleted.rowCount) throw new AppError(404, 'Resource not found.');
     await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'resource', req.params.id, 'deleted');
   });
