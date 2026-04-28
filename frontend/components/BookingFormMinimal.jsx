@@ -43,10 +43,10 @@ function MiniCalendar({ selectedDate, onSelect, closedDates, fullDates, hasRules
     <div>
       <div className="d-flex justify-content-between align-items-center mb-2">
         <button type="button" className="btn btn-sm btn-outline-secondary"
-          onClick={() => vm === 0 ? (setVm(11), setVy(y => y - 1)) : setVm(m => m - 1)}>‹</button>
+          onClick={() => vm === 0 ? (setVm(11), setVy(y => y - 1)) : setVm(m => m - 1)}>&larr;</button>
         <span style={{ fontWeight: 500, fontSize: 13 }}>{monthLabel}</span>
         <button type="button" className="btn btn-sm btn-outline-secondary"
-          onClick={() => vm === 11 ? (setVm(0), setVy(y => y + 1)) : setVm(m => m + 1)}>›</button>
+          onClick={() => vm === 11 ? (setVm(0), setVy(y => y + 1)) : setVm(m => m + 1)}>&rarr;</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
         {['M','T','W','T','F','S','S'].map((d, i) => (
@@ -61,8 +61,8 @@ function MiniCalendar({ selectedDate, onSelect, closedDates, fullDates, hasRules
           const canSelect = !isPast && !isClosed;
           let bg = 'transparent', color = '#212529', textDecoration = 'none', cursor = 'pointer';
           if (isSelected) { bg = '#206bc4'; color = '#fff'; }
-          else if (isClosed) { bg = '#f8f9fa'; color = '#adb5bd'; textDecoration = 'line-through'; cursor = 'not-allowed'; }
-          else if (isPast) { color = '#dee2e6'; cursor = 'not-allowed'; }
+          else if (isClosed) { bg = '#f9f9f7'; color = '#bbb'; textDecoration = 'line-through'; cursor = 'not-allowed'; }
+          else if (isPast) { color = '#ccc'; cursor = 'not-allowed'; }
           else if (hasRules) { bg = '#d3f9d8'; color = '#1a7a2e'; }
           return (
             <div key={str} onClick={() => canSelect && onSelect(str)}
@@ -74,7 +74,7 @@ function MiniCalendar({ selectedDate, onSelect, closedDates, fullDates, hasRules
       </div>
       <div className="d-flex gap-3 mt-2">
         {hasRules && <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#d3f9d8', border: '1px solid #82c91e', display: 'inline-block' }} /> Open</span>}
-        <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#f8f9fa', border: '1px solid #dee2e6', display: 'inline-block' }} /> Closed</span>
+        <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#f9f9f7', border: '1px solid #ddd', display: 'inline-block' }} /> Closed</span>
       </div>
     </div>
   );
@@ -172,7 +172,7 @@ export default function BookingFormMinimal({ resources = [], apiError = '', init
     <div className="mb-4">
       <div className="d-flex justify-content-between mb-1">
         {visibleSteps.map((label, i) => (
-          <span key={label} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: visibleStep === i ? 600 : 400, color: visibleStep > i ? '#2fb344' : visibleStep === i ? '#206bc4' : '#adb5bd' }}>{label}</span>
+          <span key={label} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: visibleStep === i ? 600 : 400, color: visibleStep > i ? '#2fb344' : visibleStep === i ? '#206bc4' : '#868e96' }}>{label}</span>
         ))}
       </div>
       <div className="progress" style={{ height: 3 }}>

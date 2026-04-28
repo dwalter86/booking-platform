@@ -30,7 +30,8 @@ function getFirstDayOfMonth(y, m) { const d = new Date(y, m, 1).getDay(); return
 function StepCard({ stepNum, title, isActive, isDone, summary, onEdit, children }) {
   return (
     <div className={`card mb-3 ${isActive ? 'border-primary' : isDone ? 'border-success' : ''}`} style={{ borderWidth: isActive || isDone ? 2 : 1 }}>
-      <div className={`card-header ${isActive ? 'bg-primary text-white' : isDone ? 'bg-success-lt' : ''}`}>
+      <div className={`card-header ${isActive ? 'bg-primary text-white' : isDone ? 'bg-success-lt' : ''}`}
+        style={isActive ? { borderRadius: '4px 4px 0 0' } : isDone ? { borderRadius: '4px 4px 0 0' } : {}}>
         <div className="d-flex align-items-center justify-content-between w-100">
           <div className="d-flex align-items-center gap-2">
             {isDone && !isActive ? (
@@ -76,12 +77,12 @@ function MiniCalendar({ selectedDate, onSelect, closedDates, fullDates, hasRules
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => vm === 0 ? (setVm(11), setVy(y => y - 1)) : setVm(m => m - 1)}>‹</button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => vm === 0 ? (setVm(11), setVy(y => y - 1)) : setVm(m => m - 1)}>&larr;</button>
         <span style={{ fontWeight: 500, fontSize: 13 }}>{monthLabel}</span>
-        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => vm === 11 ? (setVm(0), setVy(y => y + 1)) : setVm(m => m + 1)}>›</button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => vm === 11 ? (setVm(0), setVy(y => y + 1)) : setVm(m => m + 1)}>&rarr;</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
-        {['M','T','W','T','F','S','S'].map((d, i) => <div key={i} style={{ fontSize: 10, fontWeight: 600, color: '#adb5bd', padding: '3px 0' }}>{d}</div>)}
+        {['M','T','W','T','F','S','S'].map((d, i) => <div key={i} style={{ fontSize: 11, fontWeight: 500, color: '#868e96', padding: '3px 0' }}>{d}</div>)}
         {cells.map((d, i) => {
           if (!d) return <div key={`e${i}`} />;
           const str = `${vy}-${String(vm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -91,7 +92,8 @@ function MiniCalendar({ selectedDate, onSelect, closedDates, fullDates, hasRules
           const canSelect = !isPast && !isClosed;
           let bg = 'transparent', color = '#212529', textDecoration = 'none', cursor = 'pointer';
           if (isSelected) { bg = '#206bc4'; color = '#fff'; }
-          else if (isClosed || isPast) { color = '#dee2e6'; cursor = 'not-allowed'; }
+          else if (isClosed) { bg = '#f9f9f7'; color = '#bbb'; textDecoration = 'line-through'; cursor = 'not-allowed'; }
+          else if (isPast) { color = '#ccc'; cursor = 'not-allowed'; }
           else if (hasRules) { bg = '#d3f9d8'; color = '#1a7a2e'; }
           return (
             <div key={str} onClick={() => canSelect && onSelect(str)}
@@ -101,10 +103,10 @@ function MiniCalendar({ selectedDate, onSelect, closedDates, fullDates, hasRules
           );
         })}
       </div>
-      <div className="d-flex gap-3 mt-2">
-        {hasRules && <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#d3f9d8', border: '1px solid #82c91e', display: 'inline-block' }} /> Open</span>}
-        <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#f8f9fa', border: '1px solid #dee2e6', display: 'inline-block' }} /> Closed</span>
-      </div>
+        <div className="d-flex gap-3 mt-2">
+          {hasRules && <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#d3f9d8', border: '1px solid #82c91e', display: 'inline-block' }} /> Open</span>}
+          <span style={{ fontSize: 11, color: '#868e96', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#f9f9f7', border: '1px solid #ddd', display: 'inline-block' }} /> Closed</span>
+        </div>
     </div>
   );
 }
