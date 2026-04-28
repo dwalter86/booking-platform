@@ -144,36 +144,36 @@ export default async function PublicBookingResourcePage({ params, searchParams }
     );
   }
 
-  // Classic — original Tabler card layout
+  // Classic — aligned with new form layout
   return (
-    <div className="page page-center">
-      <div className="container py-4">
-        <div className="row justify-content-center">
-          <div className="col-lg-10">
-            {/* Back link if tenant has multiple resources */}
-            {resources.length > 1 && (
-              <a href="/book" style={{ fontSize: 13, color: '#868e96', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, textDecoration: 'none' }}>
-                ← All resources
-              </a>
+    <div className="page">
+      <div className="container-xl py-4">
+        {/* Tenant header — same as new forms */}
+        {(tenantLogoUrl || tenant?.name) && (
+          <div className="d-flex align-items-center gap-3 mb-4 px-2">
+            {tenantLogoUrl && (
+              <img src={tenantLogoUrl} alt="" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
             )}
-            <div className="card">
-              <div className="card-header" style={tenantBrandColour ? { borderTop: `3px solid ${tenantBrandColour}` } : {}}>
-                <div className="d-flex align-items-center gap-3">
-                  {tenantLogoUrl && (
-                    <img src={tenantLogoUrl} alt="" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
-                  )}
-                  <div>
-                    <h2 className="card-title mb-0">
-                      {tenant?.name ? `Book with ${tenant.name}` : 'Make a booking'}
-                    </h2>
-                    <div style={{ fontSize: 13, color: '#868e96', marginTop: 2 }}>{resource.name}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="card-body">
-                <BookingFormClassic {...sharedProps} />
-              </div>
-            </div>
+            {tenant?.name && (
+              <span style={{ fontSize: 15, fontWeight: 500, color: '#374151' }}>{tenant.name}</span>
+            )}
+          </div>
+        )}
+
+        {tenantBrandColour && (
+          <div style={{ height: 3, background: tenantBrandColour, borderRadius: 2, marginBottom: 24 }} />
+        )}
+
+        {/* Back link if tenant has multiple resources */}
+        {resources.length > 1 && (
+          <a href="/book" style={{ fontSize: 13, color: '#868e96', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 20, textDecoration: 'none' }}>
+            ← All resources
+          </a>
+        )}
+
+        <div className="card">
+          <div className="card-body">
+            <BookingFormClassic {...sharedProps} />
           </div>
         </div>
       </div>
