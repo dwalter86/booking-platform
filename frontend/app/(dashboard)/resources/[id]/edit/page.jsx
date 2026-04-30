@@ -120,41 +120,152 @@ export default async function ResourceEditPage({ params, searchParams }) {
               </div>
               <div className="col-md-4">
                 <label className="form-label">Timezone</label>
-                <input className="form-control" type="text" name="timezone" defaultValue={asValue(resource.timezone, 'Europe/London')} placeholder="e.g. Europe/London" />
+                <select className="form-select" name="timezone" defaultValue={asValue(resource.timezone, 'Europe/London')}>
+                  <optgroup label="UK &amp; Ireland">
+                    <option value="Europe/London">Europe/London (GMT/BST)</option>
+                    <option value="Europe/Dublin">Europe/Dublin (GMT/IST)</option>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="Europe/Amsterdam">Europe/Amsterdam (CET/CEST)</option>
+                    <option value="Europe/Athens">Europe/Athens (EET/EEST)</option>
+                    <option value="Europe/Belgrade">Europe/Belgrade (CET/CEST)</option>
+                    <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                    <option value="Europe/Brussels">Europe/Brussels (CET/CEST)</option>
+                    <option value="Europe/Bucharest">Europe/Bucharest (EET/EEST)</option>
+                    <option value="Europe/Budapest">Europe/Budapest (CET/CEST)</option>
+                    <option value="Europe/Copenhagen">Europe/Copenhagen (CET/CEST)</option>
+                    <option value="Europe/Helsinki">Europe/Helsinki (EET/EEST)</option>
+                    <option value="Europe/Lisbon">Europe/Lisbon (WET/WEST)</option>
+                    <option value="Europe/Ljubljana">Europe/Ljubljana (CET/CEST)</option>
+                    <option value="Europe/Luxembourg">Europe/Luxembourg (CET/CEST)</option>
+                    <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
+                    <option value="Europe/Malta">Europe/Malta (CET/CEST)</option>
+                    <option value="Europe/Nicosia">Europe/Nicosia (EET/EEST)</option>
+                    <option value="Europe/Oslo">Europe/Oslo (CET/CEST)</option>
+                    <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                    <option value="Europe/Prague">Europe/Prague (CET/CEST)</option>
+                    <option value="Europe/Riga">Europe/Riga (EET/EEST)</option>
+                    <option value="Europe/Rome">Europe/Rome (CET/CEST)</option>
+                    <option value="Europe/Sofia">Europe/Sofia (EET/EEST)</option>
+                    <option value="Europe/Stockholm">Europe/Stockholm (CET/CEST)</option>
+                    <option value="Europe/Tallinn">Europe/Tallinn (EET/EEST)</option>
+                    <option value="Europe/Valletta">Europe/Valletta (CET/CEST)</option>
+                    <option value="Europe/Vienna">Europe/Vienna (CET/CEST)</option>
+                    <option value="Europe/Vilnius">Europe/Vilnius (EET/EEST)</option>
+                    <option value="Europe/Warsaw">Europe/Warsaw (CET/CEST)</option>
+                    <option value="Europe/Zagreb">Europe/Zagreb (CET/CEST)</option>
+                  </optgroup>
+                  <optgroup label="UTC">
+                    <option value="UTC">UTC</option>
+                  </optgroup>
+                  <optgroup label="Africa">
+                    <option value="Africa/Abidjan">Africa/Abidjan (GMT)</option>
+                    <option value="Africa/Cairo">Africa/Cairo (EET)</option>
+                    <option value="Africa/Casablanca">Africa/Casablanca (WET)</option>
+                    <option value="Africa/Johannesburg">Africa/Johannesburg (SAST)</option>
+                    <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
+                    <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
+                  </optgroup>
+                  <optgroup label="America">
+                    <option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option>
+                    <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires (ART)</option>
+                    <option value="America/Bogota">America/Bogota (COT)</option>
+                    <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+                    <option value="America/Denver">America/Denver (MST/MDT)</option>
+                    <option value="America/Halifax">America/Halifax (AST/ADT)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                    <option value="America/Mexico_City">America/Mexico_City (CST/CDT)</option>
+                    <option value="America/New_York">America/New_York (EST/EDT)</option>
+                    <option value="America/Phoenix">America/Phoenix (MST)</option>
+                    <option value="America/Santiago">America/Santiago (CLT/CLST)</option>
+                    <option value="America/Sao_Paulo">America/Sao_Paulo (BRT/BRST)</option>
+                    <option value="America/St_Johns">America/St_Johns (NST/NDT)</option>
+                    <option value="America/Toronto">America/Toronto (EST/EDT)</option>
+                    <option value="America/Vancouver">America/Vancouver (PST/PDT)</option>
+                  </optgroup>
+                  <optgroup label="Asia">
+                    <option value="Asia/Bangkok">Asia/Bangkok (ICT)</option>
+                    <option value="Asia/Colombo">Asia/Colombo (IST)</option>
+                    <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                    <option value="Asia/Hong_Kong">Asia/Hong_Kong (HKT)</option>
+                    <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                    <option value="Asia/Karachi">Asia/Karachi (PKT)</option>
+                    <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                    <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (MYT)</option>
+                    <option value="Asia/Riyadh">Asia/Riyadh (AST)</option>
+                    <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+                    <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                    <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                    <option value="Asia/Taipei">Asia/Taipei (CST)</option>
+                    <option value="Asia/Tehran">Asia/Tehran (IRST/IRDT)</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                  </optgroup>
+                  <optgroup label="Atlantic">
+                    <option value="Atlantic/Azores">Atlantic/Azores (AZOT/AZOST)</option>
+                    <option value="Atlantic/Cape_Verde">Atlantic/Cape_Verde (CVT)</option>
+                    <option value="Atlantic/Reykjavik">Atlantic/Reykjavik (GMT)</option>
+                  </optgroup>
+                  <optgroup label="Australia &amp; Pacific">
+                    <option value="Australia/Adelaide">Australia/Adelaide (ACST/ACDT)</option>
+                    <option value="Australia/Brisbane">Australia/Brisbane (AEST)</option>
+                    <option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT)</option>
+                    <option value="Australia/Perth">Australia/Perth (AWST)</option>
+                    <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                    <option value="Pacific/Auckland">Pacific/Auckland (NZST/NZDT)</option>
+                    <option value="Pacific/Fiji">Pacific/Fiji (FJT)</option>
+                    <option value="Pacific/Honolulu">Pacific/Honolulu (HST)</option>
+                  </optgroup>
+                </select>
               </div>
-              <div className="col-md-4">
-                <label className="form-label">Max booking hours</label>
-                <input className="form-control" type="number" step="0.5" min="0" name="max_booking_duration_hours" defaultValue={asValue(resource.max_booking_duration_hours)} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Min notice hours</label>
-                <input className="form-control" type="number" min="0" name="min_notice_hours" defaultValue={asValue(resource.min_notice_hours, '0')} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Max advance days</label>
-                <input className="form-control" type="number" min="0" name="max_advance_booking_days" defaultValue={asValue(resource.max_advance_booking_days)} />
-              </div>
+
               <div className="col-md-6">
-                <label className="form-label">Buffer before (mins)</label>
-                <input className="form-control" type="number" min="0" name="buffer_before_minutes" defaultValue={asValue(resource.buffer_before_minutes, '0')} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Buffer after (mins)</label>
-                <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue={asValue(resource.buffer_after_minutes, '0')} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-check">
+                <label className="form-check mt-2">
                   <input className="form-check-input" type="checkbox" name="is_active" defaultChecked={checked(resource.is_active)} />
                   <span className="form-check-label">Resource is active</span>
                 </label>
               </div>
               <div className="col-md-6">
-                <label className="form-check">
+                <label className="form-check mt-2">
                   <input className="form-check-input" type="checkbox" name="auto_confirm" defaultChecked={checked(resource.auto_confirm)} />
                   <span className="form-check-label">Auto-confirm bookings</span>
                 </label>
                 <div className="form-text">Bookings are confirmed immediately on submission. If fully booked, the request is rejected.</div>
               </div>
+
+              {/* Advanced settings */}
+              <div className="col-12">
+                <details>
+                  <summary className="text-secondary" style={{ cursor: 'pointer', userSelect: 'none', fontSize: 13 }}>
+                    Advanced settings
+                  </summary>
+                  <div className="row g-3 mt-2">
+                    <div className="col-md-4">
+                      <label className="form-label">Max booking hours</label>
+                      <input className="form-control" type="number" step="0.5" min="0" name="max_booking_duration_hours" defaultValue={asValue(resource.max_booking_duration_hours)} />
+                      <div className="form-text">Leave blank for no limit.</div>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Min notice hours</label>
+                      <input className="form-control" type="number" min="0" name="min_notice_hours" defaultValue={asValue(resource.min_notice_hours, '0')} />
+                      <div className="form-text">How far in advance a booking must be made.</div>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Max advance days</label>
+                      <input className="form-control" type="number" min="0" name="max_advance_booking_days" defaultValue={asValue(resource.max_advance_booking_days)} />
+                      <div className="form-text">How far ahead customers can book. Leave blank for no limit.</div>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Buffer before (mins)</label>
+                      <input className="form-control" type="number" min="0" name="buffer_before_minutes" defaultValue={asValue(resource.buffer_before_minutes, '0')} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Buffer after (mins)</label>
+                      <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue={asValue(resource.buffer_after_minutes, '0')} />
+                    </div>
+                  </div>
+                </details>
+              </div>
+
               <div className="col-12 d-flex justify-content-between align-items-center">
                 <button className="btn btn-primary" type="submit">Save changes</button>
                 <form action="/resource-actions/delete" method="post" style={{ display: 'inline' }}>
