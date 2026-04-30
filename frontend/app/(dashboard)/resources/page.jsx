@@ -109,7 +109,7 @@ export default async function ResourcesPage({ searchParams }) {
     : '';
 
   const addResourceButton = (
-    <Link className="btn btn-sm btn-primary" href="/resources?add=1">
+    <Link className="btn btn-sm btn-primary" href="/resources/new">
       Add resource
     </Link>
   );
@@ -166,8 +166,8 @@ export default async function ResourcesPage({ searchParams }) {
                         <td>
                           <div className="d-flex gap-1 flex-wrap justify-content-end">
                             <Link
-                              className={`btn btn-sm ${isEditSelected ? 'btn-primary' : 'btn-outline-primary'}`}
-                              href={`/resources?resource_id=${row.id}`}
+                              className="btn btn-sm btn-outline-primary"
+                              href={`/resources/${row.id}/edit`}
                             >
                               Edit
                             </Link>

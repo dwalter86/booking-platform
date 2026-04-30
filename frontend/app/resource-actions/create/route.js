@@ -89,6 +89,14 @@ export async function POST(request) {
       const message = encodeURIComponent(data?.error || 'Unable to create resource');
       return NextResponse.redirect(new URL(`/resources?error=${message}`, baseUrl), 302);
     }
+
+    const created = await response.json().catch(() => null);
+    const newId = created?.id;
+    if (newId) {
+      return NextResponse.redirect(
+        new URL(`/resources/${newId}/edit?success=Resource%20created`, baseUrl), 302
+      );
+    }
   } catch {
     return NextResponse.redirect(new URL('/resources?error=API%20unavailable', baseUrl), 302);
   }

@@ -98,9 +98,19 @@ export async function POST(request) {
     return NextResponse.redirect(new URL('/resources?error=API%20unavailable', baseUrl), 302);
   }
 
+  const returnTo = String(form.get('return_to') || '').trim();
   const returnId = String(form.get('return_resource_id') || '').trim();
-  const redirectPath = returnId
-    ? `/resources?resource_id=${encodeURIComponent(returnId)}&success=Resource%20updated`
-    : '/resources?success=Resource%20updated';
+
+  let redirectPath;
+  if (returnTo) {
+    // Dedicated edit page — redirect back with success param
+    const sep = returnTo.includes('?') ? '&' : '?';
+    redirectPath = `${returnTo}${sep}success=Resource%20updated`;
+  } else if (returnId) {
+    // Side panel — legacy behaviour
+    redirectPath = `/resources?resource_id=${encodeURIComponent(returnId)}&success=Resource%20updated`;
+  } else {
+    redirectPath = '/resources?success=Resource%20updated';
+  }
   return NextResponse.redirect(new URL(redirectPath, baseUrl), 302);
 }
