@@ -108,22 +108,17 @@ export default async function ResourcesPage({ searchParams }) {
     ? `/resources?resource_id=${selectedResourceId}&panel=unavailability`
     : '';
 
-  const addResourceButton = (
-    <Link className="btn btn-sm btn-primary" href="/resources/new">
-      Add resource
-    </Link>
-  );
-
   return (
-    <LayoutShell title="Resources" headerAction={addResourceButton}>
+    <LayoutShell>
       {success ? <div className="alert alert-success">{success}</div> : null}
       {error ? <div className="alert alert-danger">{error}</div> : null}
 
       <div className="row g-4">
         <div className={selectedResource || isAdding ? 'col-lg-7' : 'col-12'}>
           <div className="card">
-            <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
-              <h3 className="card-title" style={{ color: '#ffffff' }}>Resource list</h3>
+            <div className="card-header d-flex align-items-center justify-content-between">
+              <h3 className="card-title">Resources</h3>
+              <Link className="btn btn-sm btn-primary" href="/resources/new">Add resource</Link>
             </div>
             <div className="table-responsive">
               <table className="table table-vcenter card-table">

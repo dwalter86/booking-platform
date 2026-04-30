@@ -53,14 +53,8 @@ export default async function BookingsPage({ searchParams }) {
   const filterToggleParams = new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'filter')));
   const filterToggleHref = showFilter ? `/bookings?${filterToggleParams}` : `/bookings?${filterToggleParams}&filter=1`;
 
-  const filterButton = (
-    <Link href={filterToggleHref} className={`btn btn-sm ${hasActiveFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}>
-      Filters{hasActiveFilters ? ' ·' : ''}
-    </Link>
-  );
-
   return (
-    <LayoutShell title="Bookings" headerAction={filterButton}>
+    <LayoutShell>
       {success ? <div className="alert alert-success">{success}</div> : null}
       {error ? <div className="alert alert-danger">{error}</div> : null}
       {searchParams?.error ? <div className="alert alert-danger">{searchParams.error}</div> : null}
@@ -108,8 +102,11 @@ export default async function BookingsPage({ searchParams }) {
       <div className="row g-4">
         <div className={selectedBooking ? 'col-lg-7' : 'col-12'}>
           <div className="card">
-            <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
-              <h3 className="card-title" style={{ color: '#ffffff' }}>Booking list</h3>
+            <div className="card-header d-flex align-items-center justify-content-between">
+              <h3 className="card-title">Bookings</h3>
+              <Link href={filterToggleHref} className={`btn btn-sm ${hasActiveFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}>
+                Filters{hasActiveFilters ? ' ·' : ''}
+              </Link>
             </div>
             <div className="table-responsive">
               <table className="table table-vcenter card-table">
