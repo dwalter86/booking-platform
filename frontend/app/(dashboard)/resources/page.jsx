@@ -172,12 +172,6 @@ export default async function ResourcesPage({ searchParams }) {
                               Edit
                             </Link>
                             <Link
-                              className={`btn btn-sm ${isAvailSelected ? 'btn-secondary' : 'btn-outline-secondary'}`}
-                              href={`/resources?resource_id=${row.id}&panel=availability`}
-                            >
-                              Availability
-                            </Link>
-                            <Link
                               className={`btn btn-sm ${isUnavailSelected ? 'btn-danger' : 'btn-outline-danger'}`}
                               href={`/resources?resource_id=${row.id}&panel=unavailability`}
                             >
