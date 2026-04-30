@@ -241,7 +241,7 @@ router.post('/request', resolveTenant, async (req, res, next) => {
 
       const resourceResult = await client.query(
         `SELECT id, tenant_id, name, capacity, booking_mode,
-                max_booking_duration_hours, is_active
+                max_booking_duration_hours, is_active, auto_confirm
            FROM resources
           WHERE tenant_id = $1
             AND id = $2`,
@@ -308,6 +308,27 @@ router.post('/request', resolveTenant, async (req, res, next) => {
         ]
       );
 
+      // Auto-confirm if enabled on this resource
+      let finalBooking = inserted.rows[0];
+      if (resource.auto_confirm) {
+        const confirmed = await client.query(
+          `UPDATE bookings
+              SET status       = 'confirmed',
+                  confirmed_at = NOW(),
+                  updated_at   = NOW()
+            WHERE id        = $1
+              AND tenant_id = $2
+            RETURNING *`,
+          [finalBooking.id, req.tenant.id]
+        );
+        if (confirmed.rowCount > 0) {
+          finalBooking = confirmed.rows[0];
+        }
+        // TODO: send confirmed booking email via Brevo when email notifications are implemented
+      } else {
+        // TODO: send provisional booking email via Brevo when email notifications are implemented
+      }
+
       // Consume the draft if one was provided
       if (draftToken) {
         await client.query(
@@ -318,11 +339,13 @@ router.post('/request', resolveTenant, async (req, res, next) => {
         );
       }
 
-      return { resource, booking: inserted.rows[0] };
+      return { resource, booking: finalBooking };
     });
 
     res.status(201).json({
-      message: 'Provisional booking request created.',
+      message: result.booking.status === 'confirmed'
+        ? 'Booking confirmed.'
+        : 'Provisional booking request created.',
       booking: result.booking,
       resource: {
         id:                         result.resource.id,

@@ -142,11 +142,18 @@ export default async function ResourceEditPage({ params, searchParams }) {
                 <label className="form-label">Buffer after (mins)</label>
                 <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue={asValue(resource.buffer_after_minutes, '0')} />
               </div>
-              <div className="col-12">
+              <div className="col-md-6">
                 <label className="form-check">
                   <input className="form-check-input" type="checkbox" name="is_active" defaultChecked={checked(resource.is_active)} />
                   <span className="form-check-label">Resource is active</span>
                 </label>
+              </div>
+              <div className="col-md-6">
+                <label className="form-check">
+                  <input className="form-check-input" type="checkbox" name="auto_confirm" defaultChecked={checked(resource.auto_confirm)} />
+                  <span className="form-check-label">Auto-confirm bookings</span>
+                </label>
+                <div className="form-text">Bookings are confirmed immediately on submission. If fully booked, the request is rejected.</div>
               </div>
               <div className="col-12 d-flex justify-content-between align-items-center">
                 <button className="btn btn-primary" type="submit">Save changes</button>

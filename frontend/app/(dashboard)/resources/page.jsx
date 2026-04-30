@@ -165,7 +165,10 @@ export default async function ResourcesPage({ searchParams }) {
                         <td>{row.capacity}</td>
                         <td>{bookingModeLabel(row.booking_mode)}</td>
                         <td>
-                          <span className="text-secondary small">{formTypeLabel(row.booking_form_type)}</span>
+                          <div className="text-secondary small">{formTypeLabel(row.booking_form_type)}</div>
+                          {row.auto_confirm && (
+                            <span className="badge bg-green-lt mt-1">Auto-confirm</span>
+                          )}
                         </td>
                         <td>
                           <div className="d-flex gap-1 flex-wrap justify-content-end">

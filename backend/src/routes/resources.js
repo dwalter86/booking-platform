@@ -38,11 +38,11 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
          tenant_id, name, slug, description, timezone, is_active, capacity,
          booking_mode, max_booking_duration_hours, min_notice_hours,
          max_advance_booking_days, buffer_before_minutes, buffer_after_minutes,
-         booking_form_type, metadata
+         booking_form_type, metadata, auto_confirm
        ) VALUES (
          $1, $2, $3, $4, COALESCE($5, 'UTC'), COALESCE($6, true), COALESCE($7, 1),
          COALESCE($8, 'free'), $9, COALESCE($10, 0), $11, COALESCE($12, 0), COALESCE($13, 0),
-         COALESCE($14, 'classic'), COALESCE($15::jsonb, '{}'::jsonb)
+         COALESCE($14, 'classic'), COALESCE($15::jsonb, '{}'::jsonb), COALESCE($16, false)
        ) RETURNING *`,
       [
         req.auth.tenant_id,
@@ -59,7 +59,8 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
         data.buffer_before_minutes,
         data.buffer_after_minutes,
         formType,
-        JSON.stringify(data.metadata || {})
+        JSON.stringify(data.metadata || {}),
+        data.auto_confirm ?? false
       ]
     );
     await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'resource', result.rows[0].id, 'created', data);
@@ -97,8 +98,9 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
               buffer_before_minutes = $12,
               buffer_after_minutes = $13,
               booking_form_type = $14,
-              metadata = $15::jsonb
-        WHERE id = $1 AND tenant_id = $16
+              metadata = $15::jsonb,
+              auto_confirm = $16
+        WHERE id = $1 AND tenant_id = $17
       RETURNING *`,
       [
         req.params.id,
@@ -116,6 +118,7 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
         data.buffer_after_minutes,
         formType,
         JSON.stringify(data.metadata || {}),
+        data.auto_confirm ?? false,
         req.auth.tenant_id,
       ]
     );
