@@ -6,6 +6,7 @@ import UnavailabilityBlocksList from '../../../components/UnavailabilityBlocksLi
 import { apiFetch, requireAuth } from '../../../lib/auth';
 import DayOfWeekSelector from '../../../components/DayOfWeekSelector';
 import AllDayToggle from '../../../components/AllDayToggle';
+import CopyButton from '../../../components/CopyButton';
 
 const DAYS = [
   { value: 0, label: 'Sunday' },
@@ -61,6 +62,12 @@ function BookingFormSelector({ defaultValue = 'classic' }) {
 
 export default async function ResourcesPage({ searchParams }) {
   await requireAuth();
+  const { headers } = await import('next/headers');
+  const headerStore = headers();
+  const forwardedHost = headerStore.get('x-forwarded-host');
+  const host = forwardedHost || headerStore.get('host') || 'localhost';
+  const proto = headerStore.get('x-forwarded-proto') || 'http';
+  const baseUrl = `${proto}://${host}`;
   const response = await apiFetch('/api/resources');
   const rows = response.ok ? await response.json() : [];
   const error = searchParams?.error || '';
@@ -70,6 +77,7 @@ export default async function ResourcesPage({ searchParams }) {
   const isAdding = searchParams?.add === '1';
   const panel = searchParams?.panel || '';
   const isAvailabilityPanel = panel === 'availability';
+  const isSharePanel = panel === 'share';
   const isUnavailabilityPanel = panel === 'unavailability';
   const show = searchParams?.show || '';
   const editRuleId = searchParams?.edit_rule || '';
@@ -141,7 +149,8 @@ export default async function ResourcesPage({ searchParams }) {
                     const isEditSelected = row.id === selectedResourceId && !panel;
                     const isAvailSelected = row.id === selectedResourceId && isAvailabilityPanel;
                     const isUnavailSelected = row.id === selectedResourceId && isUnavailabilityPanel;
-                    const isRowActive = isEditSelected || isAvailSelected || isUnavailSelected;
+                    const isShareSelected = row.id === selectedResourceId && isSharePanel;
+                    const isRowActive = isEditSelected || isAvailSelected || isUnavailSelected || isShareSelected;
                     return (
                       <tr key={row.id} className={isRowActive ? 'table-active' : undefined}>
                         <td>
@@ -165,6 +174,12 @@ export default async function ResourcesPage({ searchParams }) {
                               href={`/resources/${row.id}/edit`}
                             >
                               Edit
+                            </Link>
+                            <Link
+                              className={`btn btn-sm ${row.id === selectedResourceId && isSharePanel ? 'btn-info' : 'btn-outline-info'}`}
+                              href={`/resources?resource_id=${row.id}&panel=share`}
+                            >
+                              Share
                             </Link>
                             <Link
                               className={`btn btn-sm ${isUnavailSelected ? 'btn-danger' : 'btn-outline-danger'}`}
@@ -194,9 +209,11 @@ export default async function ResourcesPage({ searchParams }) {
                     ? `Availability — ${selectedResource.name}`
                     : isUnavailabilityPanel && selectedResource
                       ? `Unavailability — ${selectedResource.name}`
-                      : selectedResource
-                        ? selectedResource.name
-                        : 'Resource details'}
+                      : isSharePanel && selectedResource
+                        ? `Share — ${selectedResource.name}`
+                        : selectedResource
+                          ? selectedResource.name
+                          : 'Resource details'}
               </h3>
               <div className="d-flex align-items-center gap-2">
                 <Link href="/resources" className="btn btn-sm btn-outline-light" aria-label="Close">
@@ -522,6 +539,49 @@ export default async function ResourcesPage({ searchParams }) {
                     <h4 className="mb-3">Existing blocks</h4>
                     <UnavailabilityBlocksList blocks={blocks} resources={rows} returnBase={unavailReturnBase} />
                   </div>
+                </div>
+                ) : isSharePanel && selectedResource ? (
+                <div className="d-flex flex-column gap-4">
+
+                  {/* Public URL */}
+                  <div>
+                    <h4 className="mb-1">Public booking URL</h4>
+                    <p className="text-secondary small mb-3">
+                      Share this link with customers to let them book this resource directly.
+                    </p>
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        readOnly
+                        value={`${baseUrl}/book/${selectedResource.slug}`}
+                      />
+                      <CopyButton text={`${baseUrl}/book/${selectedResource.slug}`} />
+                    </div>
+                  </div>
+
+                  {/* Embed guide placeholder */}
+                  <div>
+                    <h4 className="mb-1">Embed guide</h4>
+                    <p className="text-secondary small mb-0">
+                      Instructions for embedding this booking form on your website will appear here.
+                    </p>
+                    <div className="rounded border bg-light p-3 mt-2 text-secondary small">
+                      Coming soon
+                    </div>
+                  </div>
+
+                  {/* Embed code placeholder */}
+                  <div>
+                    <h4 className="mb-1">Embed code</h4>
+                    <p className="text-secondary small mb-0">
+                      Copy and paste this snippet into your website to embed the booking form.
+                    </p>
+                    <div className="rounded border bg-light p-3 mt-2 text-secondary small font-monospace">
+                      Coming soon
+                    </div>
+                  </div>
+
                 </div>
               ) : (
                 /* ── Edit resource form ── */
