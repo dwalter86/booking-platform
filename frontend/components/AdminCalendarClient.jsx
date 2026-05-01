@@ -189,48 +189,63 @@ export default function AdminCalendarClient({ resources = [], unavailabilityBloc
 
   return (
     <>
-      {/* Toolbar row */}
-      <div className="d-flex align-items-center gap-2 mb-3">
-        
-        <select
-          className="form-select form-select-sm"
-          style={{ width: 'auto' }}
-          value={selectedResourceId}
-          onChange={(e) => setSelectedResourceId(e.target.value)}
-        >
-          <option value="">All resources</option>
-          {resources.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
-
-        <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('prev')}>&#8592;</button>
-        <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('today')}>Today</button>
-        <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('next')}>&#8594;</button>
-        <span className="text-secondary" style={{ fontSize: '14px', fontWeight: 500 }}>{calendarTitle}</span>
-
-        <div className="ms-auto d-flex gap-2">
-          <button
-            className={`btn btn-sm ${showBlocks ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setShowBlocks(!showBlocks)}
-          >
-            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#d63939', marginRight: 5 }} />
-            Blocks
-          </button>
-          <button
-            className={`btn btn-sm ${showProvisional ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setShowProvisional(!showProvisional)}
-          >
-            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#f59f00', marginRight: 5 }} />
-            Provisional
-          </button>
-        </div>
-      </div>
 
       {/* Main layout */}
       <div className="row g-4">
         <div className={selectedEvent ? 'col-lg-8' : 'col-12'}>
           <div className="card">
+            <div className="card-header d-flex align-items-center gap-2 flex-wrap">
+
+              <select
+                className="form-select form-select-sm"
+                style={{ width: 'auto' }}
+                value={selectedResourceId}
+                onChange={(e) => setSelectedResourceId(e.target.value)}
+              >
+                <option value="">All resources</option>
+                {resources.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('prev')}>&#8592;</button>
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('today')}>Today</button>
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('next')}>&#8594;</button>
+
+              <span className="text-secondary" style={{ fontSize: '14px', fontWeight: 500 }}>{calendarTitle}</span>
+
+              <div className="ms-auto d-flex align-items-center gap-2">
+                <div className="btn-group btn-group-sm">
+                  <button
+                    className={`btn ${activeView === 'timeGridDay' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => navigate('timeGridDay')}
+                  >Day</button>
+                  <button
+                    className={`btn ${activeView === 'timeGridWeek' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => navigate('timeGridWeek')}
+                  >Week</button>
+                  <button
+                    className={`btn ${activeView === 'dayGridMonth' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => navigate('dayGridMonth')}
+                  >Month</button>
+                </div>
+
+                <button
+                  className={`btn btn-sm ${showBlocks ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setShowBlocks(!showBlocks)}
+                >
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#d63939', marginRight: 5 }} />
+                  Blocks
+                </button>
+                <button
+                  className={`btn btn-sm ${showProvisional ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setShowProvisional(!showProvisional)}
+                >
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#f59f00', marginRight: 5 }} />
+                  Provisional
+                </button>
+              </div>
+            </div>
             <div className="card-body p-0">
               {!mounted ? null : <FullCalendarComponent
               

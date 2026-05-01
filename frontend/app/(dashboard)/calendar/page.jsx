@@ -1,7 +1,6 @@
 import LayoutShell from '../../../components/LayoutShell';
 import ErrorAlert from '../../../components/ErrorAlert';
 import AdminCalendarClient from '../../../components/AdminCalendarClient';
-import CalendarViewButtons from '../../../components/CalendarViewButtons';
 import { apiFetch, requireAuth } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -29,10 +28,8 @@ export default async function CalendarPage({ searchParams }) {
 
   const initialView = searchParams?.view || 'timeGridWeek';
 
-  const viewButtons = <CalendarViewButtons initialView={initialView} />;
-
   return (
-    <LayoutShell title="Calendar" headerAction={viewButtons}>
+  <LayoutShell>
       <ErrorAlert message={error} />
       <AdminCalendarClient
         resources={resources}
