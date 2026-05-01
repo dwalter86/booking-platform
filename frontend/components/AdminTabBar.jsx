@@ -9,12 +9,12 @@ const tabs = [
 
 export default function AdminTabBar({ activeTab }) {
   return (
-    <div className="mb-4 d-flex gap-2">
+    <div className="d-flex gap-2">
       {tabs.map(({ id, label }) => (
         <Link
           key={id}
           href={`/administration?tab=${id}`}
-          className={`btn ${activeTab === id ? 'btn-primary' : 'btn-outline-secondary'}`}
+          className={`btn btn-sm ${activeTab === id ? 'btn-primary' : 'btn-outline-secondary'}`}
         >
           {label}
         </Link>

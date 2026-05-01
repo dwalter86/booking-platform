@@ -20,26 +20,12 @@ export default async function AdministrationPage({ searchParams }) {
   let content;
 
   if (tab === 'settings') {
-    const [tenantRes, entitlementRes, resourcesRes, bookingsRes] = await Promise.all([
-      apiFetch('/api/tenant/profile'),
-      apiFetch('/api/entitlement'),
-      apiFetch('/api/resources'),
-      apiFetch('/api/bookings'),
-    ]);
-
-    const tenant        = tenantRes.ok      ? await tenantRes.json()      : null;
-    const entitlement   = entitlementRes.ok ? await entitlementRes.json() : null;
-    const resourcesRaw  = resourcesRes.ok   ? await resourcesRes.json()   : [];
-    const bookingsRaw   = bookingsRes.ok    ? await bookingsRes.json()    : {};
-    const resourceCount = (Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || [])).length;
-    const totalBookings = bookingsRaw?.pagination?.total_count ?? (Array.isArray(bookingsRaw) ? bookingsRaw.length : (bookingsRaw.data?.length ?? 0));
+    const tenantRes = await apiFetch('/api/tenant/profile');
+    const tenant    = tenantRes.ok ? await tenantRes.json() : null;
 
     content = (
       <SettingsTabContent
         tenant={tenant}
-        entitlement={entitlement}
-        resourceCount={resourceCount}
-        totalBookings={totalBookings}
         success={success}
         error={error}
       />
@@ -93,8 +79,7 @@ export default async function AdministrationPage({ searchParams }) {
   }
 
   return (
-    <LayoutShell title="Administration">
-      <AdminTabBar activeTab={tab} />
+    <LayoutShell title="Administration" headerAction={<AdminTabBar activeTab={tab} />}>
       {content}
     </LayoutShell>
   );

@@ -34,9 +34,9 @@ export default function LayoutShell({ title, headerAction, children }) {
           <div className="container-xl">
             <div className="row g-2 align-items-center">
               <div className="col">
-                <h2 className="page-title">{title}</h2>
+                <h2 className="page-title mb-0">{title}</h2>
               </div>
-              {headerAction && <div className="col-auto">{headerAction}</div>}
+              {headerAction && <div className="col-auto d-flex align-items-center">{headerAction}</div>}
             </div>
           </div>
         </div>
