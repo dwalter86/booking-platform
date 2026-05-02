@@ -28,9 +28,9 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const created = await withTenantContext(req.auth.tenant_id, async (client) => {
     const entitlements = await getTenantEntitlements(client, req.auth.tenant_id);
     const currentCountResult = await client.query(`SELECT COUNT(*)::int AS total FROM public.resources`);
-    const limit = entitlements.limits['resources:absolute'];
+    const limit = entitlements.limits['resources_count:absolute'];
     if (!checkAbsoluteLimit(currentCountResult.rows[0].total, limit)) {
-      throw new AppError(402, 'Resource limit reached for this tenant plan.');
+      throw new AppError(402, 'Resource limit reached for your current plan. Upgrade to add more resources.');
     }
 
     const result = await client.query(

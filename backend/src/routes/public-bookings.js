@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { withTransaction } from '../lib/db.js';
 import { AppError } from '../lib/errors.js';
 import { resolveTenant } from '../middleware/tenant.js';
+import { getTenantEntitlements, checkMonthlyLimit, incrementMonthlyUsage } from '../services/entitlements-service.js';
 
 const router = Router();
 
@@ -50,16 +51,34 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
       );
     });
 
+    // Resolve branding flag directly — no client needed, no RLS required
+    const brandingResult = await withTransaction(async (client) => {
+      await client.query('SELECT app.set_current_tenant($1)', [req.tenant.id]);
+      return client.query(
+        `SELECT pf.is_enabled
+           FROM public.plan_features pf
+           JOIN public.tenant_subscriptions ts ON ts.plan_id = pf.plan_id
+          WHERE ts.tenant_id = $1
+            AND pf.feature_key = 'remove_availio_branding'
+            AND ts.status IN ('trial', 'active', 'grace')
+          ORDER BY ts.created_at DESC
+          LIMIT 1`,
+        [req.tenant.id]
+      );
+    });
+    const removeAvailoBranding = brandingResult.rows[0]?.is_enabled ?? false;
+
     res.json({
       tenant: {
-        id: req.tenant.id,
-        name: req.tenant.name,
-        slug: req.tenant.slug,
-        subdomain: req.tenant.subdomain,
-        public_booking_enabled: req.tenant.public_booking_enabled,
-        logo_url: req.tenant.logo_url,
-        brand_colour: req.tenant.brand_colour,
-        booking_confirmation_message: req.tenant.booking_confirmation_message
+        id:                          req.tenant.id,
+        name:                        req.tenant.name,
+        slug:                        req.tenant.slug,
+        subdomain:                   req.tenant.subdomain,
+        public_booking_enabled:      req.tenant.public_booking_enabled,
+        logo_url:                    req.tenant.logo_url,
+        brand_colour:                req.tenant.brand_colour,
+        booking_confirmation_message:req.tenant.booking_confirmation_message,
+        remove_availio_branding:     removeAvailoBranding,
       },
       resources: resourcesResult.rows
     });
@@ -239,6 +258,14 @@ router.post('/request', resolveTenant, async (req, res, next) => {
     const result = await withTransaction(async (client) => {
       await client.query('SELECT app.set_current_tenant($1)', [req.tenant.id]);
 
+      // Check monthly booking limit
+      const entitlements = await getTenantEntitlements(client, req.tenant.id);
+      const bookingLimit = entitlements.limits['bookings_per_month:monthly'];
+      const bookingUsage = entitlements.usage['bookings_per_month']?.usage_value ?? 0;
+      if (!checkMonthlyLimit(bookingUsage, bookingLimit)) {
+        throw new AppError(402, 'Monthly booking limit reached for your current plan. Upgrade to accept more bookings.');
+      }
+
       const resourceResult = await client.query(
         `SELECT id, tenant_id, name, capacity, booking_mode,
                 max_booking_duration_hours, is_active, auto_confirm
@@ -328,6 +355,9 @@ router.post('/request', resolveTenant, async (req, res, next) => {
       } else {
         // TODO: send provisional booking email via Brevo when email notifications are implemented
       }
+
+      // Increment monthly booking usage counter
+      await incrementMonthlyUsage(client, req.tenant.id, 'bookings_per_month');
 
       // Consume the draft if one was provided
       if (draftToken) {

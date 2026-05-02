@@ -46,19 +46,19 @@ export default async function AdministrationPage({ searchParams }) {
     );
 
   } else if (tab === 'plans') {
-    const [catalogueRes, entitlementsRes, subscriptionRes] = await Promise.all([
+    const [catalogueRes, subscriptionRes, entitlementsRes] = await Promise.all([
       apiFetch('/api/plans/catalogue'),
-      apiFetch('/api/plans/entitlements'),
       apiFetch('/api/plans/subscription'),
+      apiFetch('/api/plans/entitlements'),
     ]);
 
-    const catalogue    = catalogueRes.ok    ? await catalogueRes.json()    : [];
-    const entitlements = entitlementsRes.ok ? await entitlementsRes.json() : {};
-    const subscription = subscriptionRes.ok ? await subscriptionRes.json() : {};
+    const catalogueData = catalogueRes.ok    ? await catalogueRes.json()    : { plans: [], limits: [], features: [] };
+    const subscription  = subscriptionRes.ok ? await subscriptionRes.json() : null;
+    const entitlements  = entitlementsRes.ok ? await entitlementsRes.json() : { limits: {}, features: {}, usage: {} };
 
     content = (
       <PlansTabContent
-        catalogue={catalogue}
+        catalogue={catalogueData}
         entitlements={entitlements}
         subscription={subscription}
       />

@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import BookingFormClassic from '../../../components/BookingFormClassic';
@@ -7,9 +5,31 @@ import BookingFormMinimal from '../../../components/BookingFormMinimal';
 import BookingFormSplit from '../../../components/BookingFormSplit';
 import BookingFormCards from '../../../components/BookingFormCards';
 
+export const dynamic = 'force-dynamic';
+
 // ---------------------------------------------------------------------------
 // Server helpers
 // ---------------------------------------------------------------------------
+
+function PoweredByAvailio() {
+  return (
+    <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 8 }}>
+      <a
+        href="https://myavailio.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          fontSize: 11,
+          color: '#9ca3af',
+          textDecoration: 'none',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        Powered by Availio
+      </a>
+    </div>
+  );
+}
 
 function getTenantSubdomain() {
   const host = headers().get('x-forwarded-host')
@@ -93,9 +113,10 @@ export default async function PublicBookingResourcePage({ params, searchParams }
   // (they still accept an array but will have exactly one entry)
   const resourcesForForm = [resource];
 
-  const tenantLogoUrl = tenant?.logo_url || '';
-  const tenantBrandColour = tenant?.brand_colour || '';
-  const formType = resource.booking_form_type || 'classic';
+  const tenantLogoUrl          = tenant?.logo_url || '';
+  const tenantBrandColour      = tenant?.brand_colour || '';
+  const removeAvailoBranding   = tenant?.remove_availio_branding ?? false;
+  const formType               = resource.booking_form_type || 'classic';
 
   const sharedProps = {
     resources: resourcesForForm,
@@ -106,6 +127,7 @@ export default async function PublicBookingResourcePage({ params, searchParams }
     confirmationMessage: tenant?.booking_confirmation_message || '',
     tenantLogoUrl,
     tenantBrandColour,
+    removeAvailoBranding,
   };
 
   // Non-classic forms — full width, no Tabler card wrapper
@@ -139,6 +161,7 @@ export default async function PublicBookingResourcePage({ params, searchParams }
           {formType === 'minimal' && <BookingFormMinimal {...sharedProps} />}
           {formType === 'split'   && <BookingFormSplit   {...sharedProps} />}
           {formType === 'cards'   && <BookingFormCards   {...sharedProps} />}
+          {!removeAvailoBranding && <PoweredByAvailio />}
         </div>
       </div>
     );
@@ -176,6 +199,7 @@ export default async function PublicBookingResourcePage({ params, searchParams }
             <BookingFormClassic {...sharedProps} />
           </div>
         </div>
+        {!removeAvailoBranding && <PoweredByAvailio />}
       </div>
     </div>
   );

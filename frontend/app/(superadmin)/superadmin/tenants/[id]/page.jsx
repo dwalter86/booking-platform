@@ -24,6 +24,8 @@ export default async function TenantDetailPage({ params, searchParams }) {
   }
 
   const tenant = await response.json();
+  const plansRes = await superAdminFetch('/api/superadmin/plans');
+  const plansCatalogue = plansRes.ok ? (await plansRes.json()).plans || [] : [];
   const sub    = tenant.subscription || {};
   const stats  = tenant.stats        || {};
 
@@ -162,11 +164,9 @@ export default async function TenantDetailPage({ params, searchParams }) {
               <label className="form-label">Change plan</label>
               <select className="form-select" name="plan_code" defaultValue={sub.plan_code || ''}>
                 <option value="">— no change —</option>
-                <option value="trial">Trial</option>
-                <option value="basic">Basic</option>
-                <option value="growth">Growth</option>
-                <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
+                {plansCatalogue.map(p => (
+                  <option key={p.code} value={p.code}>{p.name}</option>
+                ))}
               </select>
             </div>
             <div className="col-md-4">

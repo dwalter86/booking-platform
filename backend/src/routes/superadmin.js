@@ -133,6 +133,18 @@ router.get('/tenants', asyncHandler(async (req, res) => {
   });
 }));
 
+// ─── GET /api/superadmin/plans ────────────────────────────────────────────────
+
+router.get('/plans', asyncHandler(async (_req, res) => {
+  const { rows } = await query(
+    `SELECT id, code, name, description, sort_order
+     FROM public.plans
+     WHERE is_active = true
+     ORDER BY sort_order`
+  );
+  return res.json({ plans: rows });
+}));
+
 // ─── POST /api/superadmin/tenants ─────────────────────────────────────────────
 
 router.post('/tenants', asyncHandler(async (req, res) => {

@@ -26,10 +26,12 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   if (!email || !password || !full_name) throw new AppError(400, 'email, password and full_name are required.');
   const created = await withTenantContext(req.auth.tenant_id, async (client) => {
     const entitlements = await getTenantEntitlements(client, req.auth.tenant_id);
-    const currentCountResult = await client.query(`SELECT COUNT(*)::int AS total FROM public.users`);
-    const limit = entitlements.limits['admins:absolute'];
+    const currentCountResult = await client.query(
+      `SELECT COUNT(*)::int AS total FROM public.users WHERE is_super_admin = false`
+    );
+    const limit = entitlements.limits['admin_users_count:absolute'];
     if (!checkAbsoluteLimit(currentCountResult.rows[0].total, limit)) {
-      throw new AppError(402, 'Admin user limit reached for this tenant plan.');
+      throw new AppError(402, 'Admin user limit reached for your current plan. Upgrade to add more users.');
     }
 
     const passwordHash = await hashPassword(password);
