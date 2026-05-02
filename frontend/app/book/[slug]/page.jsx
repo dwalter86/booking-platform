@@ -19,13 +19,26 @@ function PoweredByAvailio() {
         target="_blank"
         rel="noopener noreferrer"
         style={{
-          fontSize: 11,
-          color: '#9ca3af',
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 6,
           textDecoration: 'none',
-          fontFamily: 'system-ui, sans-serif',
         }}
       >
-        Powered by Availio
+        <img
+          src="/availio-logo-dark.svg"
+          alt="Availio"
+          style={{ height: 25, width: 'auto', opacity: 0.75 }}
+        />
+        <span style={{
+          fontSize: 10,
+          color: '#9ca3af',
+          fontFamily: 'system-ui, sans-serif',
+          letterSpacing: '0.02em',
+        }}>
+          Powered by Availio
+        </span>
       </a>
     </div>
   );
