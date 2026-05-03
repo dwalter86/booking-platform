@@ -415,16 +415,51 @@ router.patch('/tenants/:id/subscription', asyncHandler(async (req, res) => {
   // Plan change — immediate upgrade, deferred downgrade handled by caller
   if (plan_code) {
     const planResult = await query(
-      `SELECT id FROM public.plans WHERE code = $1 AND is_active = true LIMIT 1`,
+      `SELECT id, code FROM public.plans WHERE code = $1 AND is_active = true LIMIT 1`,
       [plan_code]
     );
     if (planResult.rows.length === 0) throw new AppError(400, `Plan '${plan_code}' not found.`);
-    params.push(planResult.rows[0].id);
+    const newPlan = planResult.rows[0];
+    params.push(newPlan.id);
     updates.push(`plan_id = $${params.length}`);
 
     // If moving from trial to a paid plan, update status to active
     if (sub.status === 'trial' && plan_code !== 'trial') {
       updates.push(`status = 'active'`);
+    }
+
+    // Auto-inactivate resources if new plan has a lower resource limit
+    const newLimitResult = await query(
+      `SELECT limit_value FROM public.plan_limits
+       WHERE plan_id = $1 AND metric_key = 'resources_count' AND period = 'absolute'
+       LIMIT 1`,
+      [newPlan.id]
+    );
+    const newLimit = newLimitResult.rows[0]?.limit_value;
+
+    if (newLimit !== null && newLimit !== undefined) {
+      // Count currently active resources
+      const activeResult = await query(
+        `SELECT id FROM public.resources
+         WHERE tenant_id = $1 AND is_active = true
+         ORDER BY created_at ASC`,
+        [id]
+      );
+      const activeResources = activeResult.rows;
+
+      if (activeResources.length > Number(newLimit)) {
+        // Keep the oldest N resources active, inactivate the rest
+        const toInactivate = activeResources
+          .slice(Number(newLimit))
+          .map(r => r.id);
+
+        await query(
+          `UPDATE public.resources
+           SET is_active = false, updated_at = now()
+           WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
+          [toInactivate, id]
+        );
+      }
     }
   }
 

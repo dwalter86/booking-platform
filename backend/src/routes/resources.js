@@ -79,6 +79,21 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
     if (!current) throw new AppError(404, 'Resource not found.');
     const data = { ...current, ...(req.body || {}) };
 
+    // If activating a resource, check the plan limit
+    const isActivating = !current.is_active && data.is_active === true;
+    if (isActivating) {
+      const entitlements = await getTenantEntitlements(client, req.auth.tenant_id);
+      const limit = entitlements.limits['resources_count:absolute'];
+      const activeCountResult = await client.query(
+        `SELECT COUNT(*)::int AS total FROM public.resources
+         WHERE is_active = true AND id != $1`,
+        [req.params.id]
+      );
+      if (!checkAbsoluteLimit(activeCountResult.rows[0].total, limit)) {
+        throw new AppError(402, 'Active resource limit reached for your current plan. Deactivate another resource or upgrade to activate this one.');
+      }
+    }
+
     const formType = VALID_FORM_TYPES.includes(data.booking_form_type)
       ? data.booking_form_type
       : 'classic';
