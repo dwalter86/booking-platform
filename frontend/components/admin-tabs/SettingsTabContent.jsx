@@ -121,8 +121,8 @@ export default function SettingsTabContent({ tenant, subscription, success, erro
           </div>
           <div className="col-md-3">
             <div className="subheader mb-1">Account status</div>
-            <span className={`badge ${tenant.status === 'active' ? 'bg-success' : 'bg-danger'}`}>
-              {tenant.status}
+            <span className={`badge ${tenant.status === 'active' ? 'bg-green-lt' : 'bg-red-lt'}`}>
+              {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
             </span>
           </div>
           <div className="col-md-3">
@@ -135,11 +135,11 @@ export default function SettingsTabContent({ tenant, subscription, success, erro
               <div className="d-flex align-items-center gap-2">
                 <span className="fw-medium">{subscription.plan_name || '—'}</span>
                 <span className={`badge ${
-                  subscription.status === 'active'   ? 'bg-success'   :
-                  subscription.status === 'trial'    ? 'bg-info'      :
-                  subscription.status === 'grace'    ? 'bg-warning'   : 'bg-secondary'
-                } text-white`}>
-                  {subscription.status}
+                  subscription.status === 'active'   ? 'bg-green-lt'     :
+                  subscription.status === 'trial'    ? 'bg-info-lt'      :
+                  subscription.status === 'grace'    ? 'bg-warning-lt'   : 'bg-secondary-lt'
+                }`}>
+                  {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
                 </span>
               </div>
             </div>
@@ -344,7 +344,7 @@ export default function SettingsTabContent({ tenant, subscription, success, erro
             <div className="row g-3">
               <div className="col-md-4">
                 <div className="subheader mb-1">Public booking</div>
-                <span className={`badge ${tenant.public_booking_enabled ? 'bg-success' : 'bg-secondary'}`}>
+                <span className={`badge ${tenant.public_booking_enabled ? 'bg-green-lt' : 'bg-secondary-lt'}`}>
                   {tenant.public_booking_enabled ? 'Enabled' : 'Disabled'}
                 </span>
               </div>

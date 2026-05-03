@@ -3,12 +3,12 @@ import DataCard from '../DataCard';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadge(status) {
-  if (status === 'trial')    return <span className="badge bg-info    text-white">Trial</span>;
-  if (status === 'grace')    return <span className="badge bg-warning text-white">Grace period</span>;
-  if (status === 'active')   return <span className="badge bg-success text-white">Active</span>;
-  if (status === 'past_due') return <span className="badge bg-danger  text-white">Past due</span>;
-  if (status === 'cancelled')return <span className="badge bg-secondary text-white">Cancelled</span>;
-  return <span className="badge bg-secondary text-white">{status || 'Unknown'}</span>;
+  if (status === 'trial')    return <span className="badge bg-info-lt">Trial</span>;
+  if (status === 'grace')    return <span className="badge bg-warning-lt">Grace period</span>;
+  if (status === 'active')   return <span className="badge bg-green-lt">Active</span>;
+  if (status === 'past_due') return <span className="badge bg-red-lt">Past due</span>;
+  if (status === 'cancelled')return <span className="badge bg-secondary-lt">Cancelled</span>;
+  return <span className="badge bg-secondary-lt">{status || 'Unknown'}</span>;
 }
 
 function periodLabel(status) {
@@ -193,7 +193,7 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
                   <th key={p.code} className="text-center">
                     {p.name}
                     {sub?.plan_code === p.code && (
-                      <span className="badge bg-primary ms-1 fw-normal" style={{ fontSize: '0.65rem' }}>
+                      <span className="badge bg-blue-lt ms-1 fw-normal" style={{ fontSize: '0.65rem' }}>
                         current
                       </span>
                     )}
