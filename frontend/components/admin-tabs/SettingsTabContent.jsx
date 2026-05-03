@@ -79,7 +79,7 @@ function ReadRow({ label, value }) {
   );
 }
 
-export default function SettingsTabContent({ tenant, success, error }) {
+export default function SettingsTabContent({ tenant, subscription, success, error }) {
   const [editSection, setEditSection] = useState(null);
 
   if (!tenant) {
@@ -115,20 +115,35 @@ export default function SettingsTabContent({ tenant, success, error }) {
       {/* Account — read only */}
       <DataCard title="Account">
         <div className="row g-3">
-          <div className="col-md-4">
+          <div className="col-md-3">
             <div className="subheader mb-1">Subdomain</div>
             <div>{tenant.subdomain}.availio.co</div>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <div className="subheader mb-1">Account status</div>
             <span className={`badge ${tenant.status === 'active' ? 'bg-success' : 'bg-danger'}`}>
               {tenant.status}
             </span>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <div className="subheader mb-1">Member since</div>
             <div>{new Date(tenant.created_at).toLocaleDateString('en-GB')}</div>
           </div>
+          {subscription && (
+            <div className="col-md-3">
+              <div className="subheader mb-1">Plan</div>
+              <div className="d-flex align-items-center gap-2">
+                <span className="fw-medium">{subscription.plan_name || '—'}</span>
+                <span className={`badge ${
+                  subscription.status === 'active'   ? 'bg-success'   :
+                  subscription.status === 'trial'    ? 'bg-info'      :
+                  subscription.status === 'grace'    ? 'bg-warning'   : 'bg-secondary'
+                } text-white`}>
+                  {subscription.status}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </DataCard>
 

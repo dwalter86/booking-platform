@@ -20,12 +20,17 @@ export default async function AdministrationPage({ searchParams }) {
   let content;
 
   if (tab === 'settings') {
-    const tenantRes = await apiFetch('/api/tenant/profile');
-    const tenant    = tenantRes.ok ? await tenantRes.json() : null;
+    const [tenantRes, subscriptionRes] = await Promise.all([
+      apiFetch('/api/tenant/profile'),
+      apiFetch('/api/plans/subscription'),
+    ]);
+    const tenant       = tenantRes.ok       ? await tenantRes.json()       : null;
+    const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
 
     content = (
       <SettingsTabContent
         tenant={tenant}
+        subscription={subscription}
         success={success}
         error={error}
       />
@@ -49,7 +54,7 @@ export default async function AdministrationPage({ searchParams }) {
     const [catalogueRes, subscriptionRes, entitlementsRes] = await Promise.all([
       apiFetch('/api/plans/catalogue'),
       apiFetch('/api/plans/subscription'),
-      apiFetch('/api/plans/entitlements'),
+      apiFetch('/api/entitlement'),
     ]);
 
     const catalogueData = catalogueRes.ok    ? await catalogueRes.json()    : { plans: [], limits: [], features: [] };

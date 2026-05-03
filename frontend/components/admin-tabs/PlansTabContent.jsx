@@ -61,6 +61,21 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
   const currentLimits  = entitlements?.limits  || {};
   const currentUsage   = entitlements?.usage   || {};
 
+  // /api/entitlement returns usage with { current, limit, remaining } per key
+  // /api/plans/entitlements returns usage with { usage_value } per key
+  // Normalise to always use { current, limit }
+  function resolveUsage(metric) {
+    const stat = currentUsage[metric];
+    if (!stat) return { current: 0, limit: null };
+    // Shape from /api/entitlement
+    if ('current' in stat) return { current: stat.current, limit: stat.limit };
+    // Shape from /api/plans/entitlements (fallback)
+    const absoluteKey = `${metric}:absolute`;
+    const monthlyKey  = `${metric}:monthly`;
+    const limit = currentLimits[absoluteKey] ?? currentLimits[monthlyKey] ?? null;
+    return { current: Number(stat.usage_value ?? 0), limit };
+  }
+
   // The metrics we show in usage
   const usageMetrics = [
     'resources_count',
@@ -136,13 +151,8 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
       <DataCard title="Usage this period">
         <div className="row g-3">
           {usageMetrics.map(metric => {
-            // Limits are stored as "metric_key:period" in entitlements
-            const absoluteKey = `${metric}:absolute`;
-            const monthlyKey  = `${metric}:monthly`;
-            const limitValue  = currentLimits[absoluteKey] ?? currentLimits[monthlyKey] ?? null;
-            const usageStat   = currentUsage[metric];
-            const current     = usageStat ? Number(usageStat.usage_value) : 0;
-            const pct         = limitValue != null ? Math.min(100, (current / Number(limitValue)) * 100) : 0;
+            const { current, limit } = resolveUsage(metric);
+            const pct = limit != null ? Math.min(100, (current / Number(limit)) * 100) : 0;
 
             return (
               <div className="col-sm-6 col-lg-4" key={metric}>
@@ -151,11 +161,11 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
                   <span className="small fw-medium">
                     {current.toLocaleString()}
                     <span className="text-secondary fw-normal">
-                      {' / '}{limitDisplay(limitValue)}
+                      {' / '}{limitDisplay(limit)}
                     </span>
                   </span>
                 </div>
-                {limitValue != null && (
+                {limit != null && (
                   <div className="progress" style={{ height: 4 }}>
                     <div
                       className={`progress-bar ${
