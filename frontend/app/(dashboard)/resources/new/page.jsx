@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import LayoutShell from '../../../../components/LayoutShell';
 import { apiFetch, requireAuth } from '../../../../lib/auth';
+import SlugInput from '../../../../components/SlugInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,15 +35,9 @@ export default async function ResourceNewPage({ searchParams }) {
         <div className="card-body">
           <form action="/resource-actions/create" method="post">
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Name</label>
-                <input className="form-control" type="text" name="name" required autoFocus />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Slug</label>
-                <input className="form-control" type="text" name="slug" placeholder="meeting-room-a" />
-                <div className="form-text">Used in the public booking URL. Leave blank to auto-generate from name.</div>
-              </div>
+              <SlugInput
+                hintText="Used in the public booking URL: /book/[slug]. Edit if needed."
+              />
               <div className="col-12">
                 <label className="form-label">Description</label>
                 <textarea className="form-control" name="description" rows="3" />

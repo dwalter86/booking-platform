@@ -7,6 +7,7 @@ import DayOfWeekSelector from '../../../../../components/DayOfWeekSelector';
 import AllDayToggle from '../../../../../components/AllDayToggle';
 import { apiFetch, requireAuth } from '../../../../../lib/auth';
 import DeleteResourceButton from '../../../../../components/DeleteResourceButton';
+import SlugInput from '../../../../../components/SlugInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,15 +98,11 @@ export default async function ResourceEditPage({ params, searchParams }) {
             <input type="hidden" name="id" value={resource.id} />
             <input type="hidden" name="return_to" value={returnBase} />
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Name</label>
-                <input className="form-control" type="text" name="name" defaultValue={asValue(resource.name)} required />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Slug</label>
-                <input className="form-control" type="text" name="slug" defaultValue={asValue(resource.slug)} required />
-                <div className="form-text">Used in the public booking URL: /book/{asValue(resource.slug)}</div>
-              </div>
+              <SlugInput
+                defaultName={asValue(resource.name)}
+                defaultSlug={asValue(resource.slug)}
+                hintText={`Used in the public booking URL: /book/${asValue(resource.slug)}. Edit if needed.`}
+              />
               <div className="col-12">
                 <label className="form-label">Description</label>
                 <textarea className="form-control" name="description" rows="3" defaultValue={asValue(resource.description)} />
@@ -431,8 +428,8 @@ export default async function ResourceEditPage({ params, searchParams }) {
                       </label>
                     </div>
                     <div className="col-12 d-flex gap-2">
-                      <button className="btn btn-primary btn-sm" type="submit">Add rule</button>
-                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase}>Cancel</Link>
+                      <button className="btn btn-primary btn-sm" type="submit">Save rule</button>
+                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase} scroll={false}>Cancel</Link>
                     </div>
                   </div>
                 </form>
@@ -513,7 +510,7 @@ export default async function ResourceEditPage({ params, searchParams }) {
                     </div>
                     <div className="col-12 d-flex gap-2">
                       <button className="btn btn-primary btn-sm" type="submit">Save changes</button>
-                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase}>Cancel</Link>
+                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase} scroll={false}>Cancel</Link>
                     </div>
                   </div>
                 </form>
@@ -551,8 +548,8 @@ export default async function ResourceEditPage({ params, searchParams }) {
                       </label>
                     </div>
                     <div className="col-12 d-flex gap-2">
-                      <button className="btn btn-primary btn-sm" type="submit">Add exception</button>
-                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase}>Cancel</Link>
+                      <button className="btn btn-primary btn-sm" type="submit">Save exception</button>
+                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase} scroll={false}>Cancel</Link>
                     </div>
                   </div>
                 </form>
@@ -592,7 +589,7 @@ export default async function ResourceEditPage({ params, searchParams }) {
                     </div>
                     <div className="col-12 d-flex gap-2">
                       <button className="btn btn-primary btn-sm" type="submit">Save changes</button>
-                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase}>Cancel</Link>
+                      <Link className="btn btn-outline-secondary btn-sm" href={returnBase} scroll={false}>Cancel</Link>
                     </div>
                   </div>
                 </form>
