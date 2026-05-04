@@ -15,11 +15,12 @@ function badgeClass(status) {
 
 async function load() {
   await requireAuth();
-  const [resourcesRes, bookingsRes, tenantRes, blocksRes] = await Promise.all([
+  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes] = await Promise.all([
     apiFetch('/api/resources'),
     apiFetch('/api/bookings?per_page=5'),
     apiFetch('/api/tenant/profile'),
     apiFetch('/api/unavailability-blocks'),
+    apiFetch('/api/plans/subscription'),
   ]);
 
   const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
@@ -44,7 +45,8 @@ async function load() {
   }
   const hasAnyRules = Object.values(allRulesByResource).some(r => r.length > 0);
 
-  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource };
+  const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
+  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription };
 }
 
 function OnboardingChecklist({ tenant, resources, hasAnyRules }) {
@@ -152,7 +154,7 @@ function OnboardingChecklist({ tenant, resources, hasAnyRules }) {
 }
 
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource } = await load();
+  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
@@ -162,7 +164,18 @@ export default async function DashboardPage() {
   const hideChecklist    = allComplete;
 
   return (
-    <LayoutShell title="Dashboard">
+    <LayoutShell title="Dashboard" headerAction={
+      subscription?.plan_name ? (
+        <span className={`badge ${
+          subscription.status === 'trial'  ? 'bg-info-lt'    :
+          subscription.status === 'grace'  ? 'bg-warning-lt' :
+          subscription.status === 'active' ? 'bg-green-lt'   : 'bg-secondary-lt'
+        }`} style={{ fontSize: '0.75rem' }}>
+          {subscription.plan_name}
+          {subscription.status === 'trial' && ' (Trial)'}
+        </span>
+      ) : null
+    }>
       {!hideChecklist && (
         <OnboardingChecklist
           tenant={tenant}
@@ -173,7 +186,12 @@ export default async function DashboardPage() {
 
       <div className="row mb-4">
         <div className="col-12">
-          <DashboardCalendarClient unavailabilityBlocks={unavailabilityBlocks} resources={resources} availabilityRulesByResource={allRulesByResource} />
+          <DashboardCalendarClient
+            unavailabilityBlocks={unavailabilityBlocks}
+            resources={resources}
+            availabilityRulesByResource={allRulesByResource}
+            showResourceSelector={resources.length > 1 && subscription?.plan_code !== 'solo'}
+          />
         </div>
       </div>
 
@@ -205,7 +223,7 @@ export default async function DashboardPage() {
                       <td>{formatDateTime(row.created_at)}</td>
                       <td>
                         <span className={`badge ${badgeClass(row.status)}`}>
-                          {row.status}
+                          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
                         </span>
                       </td>
                       <td>{formatDateTime(row.start_at)}</td>

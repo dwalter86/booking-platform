@@ -129,8 +129,8 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
             </div>
           </div>
           <div className="col-md-3 text-md-end">
-            <a href="mailto:hello@myavailio.com?subject=Upgrade%20enquiry" className="btn btn-primary btn-sm">
-              Contact us to upgrade
+            <a href="/upgrade" className="btn btn-primary btn-sm">
+              Upgrade plan
             </a>
           </div>
         </div>

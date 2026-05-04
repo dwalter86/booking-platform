@@ -23,9 +23,8 @@ function bookingColor(status) {
 function formatDateRange(start, endExclusive) {
   const end = new Date(endExclusive);
   end.setDate(end.getDate() - 1);
-  const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${startStr} – ${endStr}`;
+  const startStr = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const endStr = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function computeInitialRange() {
@@ -79,7 +78,7 @@ function DonutChart({ count, capacity }) {
 }
 
 
-export default function DashboardCalendarClient({ unavailabilityBlocks = [], resources = [], availabilityRulesByResource = {} }) {
+export default function DashboardCalendarClient({ unavailabilityBlocks = [], resources = [], availabilityRulesByResource = {}, showResourceSelector = true }) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const [calApi, setCalApi] = useState(null);
@@ -88,7 +87,7 @@ export default function DashboardCalendarClient({ unavailabilityBlocks = [], res
   const [bookings, setBookings] = useState([]);
 
   const selectedDateLabel = useMemo(() => {
-    return new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+    return new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', {
       weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
     });
   }, [selectedDate]);
@@ -198,7 +197,7 @@ export default function DashboardCalendarClient({ unavailabilityBlocks = [], res
 
       {resources.length > 0 && (
         <>
-          <div className="text-secondary small mb-2">
+          {showResourceSelector && <div className="text-secondary small mb-2">
             Showing bookings for <strong>{selectedDateLabel}</strong>
             {selectedDate !== todayStr && (
               <button
@@ -208,7 +207,8 @@ export default function DashboardCalendarClient({ unavailabilityBlocks = [], res
                 Back to today
               </button>
             )}
-          </div>
+          </div>}
+          {showResourceSelector && (
           <div className="d-flex gap-3 mb-4" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
             {resources.map((resource) => {
               const isAvailabilityOnly = resource.booking_mode === 'availability_only';
@@ -244,6 +244,7 @@ export default function DashboardCalendarClient({ unavailabilityBlocks = [], res
               );
             })}
           </div>
+          )}
         </>
       )}
     </>
