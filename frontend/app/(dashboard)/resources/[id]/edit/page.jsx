@@ -254,9 +254,9 @@ export default async function ResourceEditPage({ params, searchParams }) {
                 {isSolo ? (
                   <div className="row g-3">
                     <div className="col-md-4">
-                      <label className="form-label fw-medium">Max booking hours</label>
+                      <label className="form-label fw-medium">Appointment duration (hours)</label>
                       <input className="form-control" type="number" step="0.5" min="0.5" name="max_booking_duration_hours" defaultValue={asValue(resource.max_booking_duration_hours, '1')} />
-                      <div className="form-text">Recommended for slot-based booking. Sets the maximum length of each booking.</div>
+                      <div className="form-text">How long each appointment lasts. This sets the slot length on your availability schedule.</div>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Min notice hours</label>
@@ -394,16 +394,35 @@ export default async function ResourceEditPage({ params, searchParams }) {
                       <AllDayToggle startId="add_rule_start" endId="add_rule_end" />
                     </div>
                     {resource.booking_mode !== 'free' && (
-                      <>
-                        <div className="col-6">
-                          <label className="form-label">Slot duration (min)</label>
-                          <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Slot interval (min)</label>
-                          <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" />
-                        </div>
-                      </>
+                      isSolo ? (
+                        <>
+                          <input
+                            type="hidden"
+                            name="slot_duration_minutes"
+                            value={resource.max_booking_duration_hours
+                              ? Math.round(Number(resource.max_booking_duration_hours) * 60)
+                              : 60}
+                          />
+                          <div className="col-12">
+                            <div className="form-hint text-secondary">
+                              Slot duration is set automatically from your appointment duration ({resource.max_booking_duration_hours
+                                ? Math.round(Number(resource.max_booking_duration_hours) * 60)
+                                : 60} min).
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="col-6">
+                            <label className="form-label">Slot duration (min)</label>
+                            <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Slot interval (min)</label>
+                            <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" />
+                          </div>
+                        </>
+                      )
                     )}
                     <div className="col-12">
                       <label className="form-check">
@@ -456,16 +475,35 @@ export default async function ResourceEditPage({ params, searchParams }) {
                       );
                     })()}
                     {resource.booking_mode !== 'free' && (
-                      <>
-                        <div className="col-6">
-                          <label className="form-label">Slot duration (min)</label>
-                          <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" defaultValue={asValue(editingRule.slot_duration_minutes)} />
-                        </div>
-                        <div className="col-6">
-                          <label className="form-label">Slot interval (min)</label>
-                          <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" defaultValue={asValue(editingRule.slot_interval_minutes)} />
-                        </div>
-                      </>
+                      isSolo ? (
+                        <>
+                          <input
+                            type="hidden"
+                            name="slot_duration_minutes"
+                            value={resource.max_booking_duration_hours
+                              ? Math.round(Number(resource.max_booking_duration_hours) * 60)
+                              : 60}
+                          />
+                          <div className="col-12">
+                            <div className="form-hint text-secondary">
+                              Slot duration is set automatically from your appointment duration ({resource.max_booking_duration_hours
+                                ? Math.round(Number(resource.max_booking_duration_hours) * 60)
+                                : 60} min).
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="col-6">
+                            <label className="form-label">Slot duration (min)</label>
+                            <input className="form-control" type="number" name="slot_duration_minutes" min="5" step="5" placeholder="e.g. 60" defaultValue={asValue(editingRule.slot_duration_minutes)} />
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label">Slot interval (min)</label>
+                            <input className="form-control" type="number" name="slot_interval_minutes" min="5" step="5" placeholder="e.g. 30" defaultValue={asValue(editingRule.slot_interval_minutes)} />
+                          </div>
+                        </>
+                      )
                     )}
                     <div className="col-12">
                       <label className="form-check">

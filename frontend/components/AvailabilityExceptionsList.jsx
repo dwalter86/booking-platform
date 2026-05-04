@@ -1,8 +1,17 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 export default function AvailabilityExceptionsList({ exceptions, resourceId, returnBase }) {
+  const router = useRouter();
+
   if (!Array.isArray(exceptions) || !exceptions.length) {
     return <p className="text-secondary mb-0">No exceptions set. Click Add exception for bank holidays or special closures.</p>;
+  }
+
+  function handleEdit(exId) {
+    const sep = returnBase.includes('?') ? '&' : '?';
+    router.push(`${returnBase}${sep}edit_exception=${exId}`, { scroll: false });
   }
 
   return (
@@ -25,9 +34,13 @@ export default function AvailabilityExceptionsList({ exceptions, resourceId, ret
                 </div>
               </div>
               <div className="d-flex gap-2">
-                <a className="btn btn-outline-secondary btn-sm" href={`${returnBase}&edit_exception=${ex.id}`}>
+                <button
+                  className="btn btn-outline-secondary btn-sm"
+                  type="button"
+                  onClick={() => handleEdit(ex.id)}
+                >
                   Edit
-                </a>
+                </button>
                 <form action="/availability-exception-actions/delete" method="post">
                   <input type="hidden" name="id" value={ex.id} />
                   <input type="hidden" name="resource_id" value={resourceId} />

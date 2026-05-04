@@ -12,6 +12,10 @@ function getContext() {
   return { baseUrl: `${forwardedProto}://${tenantHost}`, tenantSubdomain };
 }
 
+function sep(url) {
+  return url.includes('?') ? '&' : '?';
+}
+
 export async function POST(request) {
   const form = await request.formData();
   const token = cookies().get('booking_admin_token')?.value || null;
@@ -48,11 +52,11 @@ export async function POST(request) {
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       const message = encodeURIComponent(data?.error || 'Unable to update availability rule');
-      return NextResponse.redirect(new URL(`${redirectBase}&error=${message}`, baseUrl), 302);
+      return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}error=${message}`, baseUrl), 302);
     }
   } catch {
-    return NextResponse.redirect(new URL(`${redirectBase}&error=API%20unavailable`, baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}error=API%20unavailable`, baseUrl), 302);
   }
 
-  return NextResponse.redirect(new URL(`${redirectBase}&success=Rule%20updated`, baseUrl), 302);
+  return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}success=Rule%20updated`, baseUrl), 302);
 }

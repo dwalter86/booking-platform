@@ -12,6 +12,8 @@ function getContext() {
   return { baseUrl: `${forwardedProto}://${tenantHost}`, tenantSubdomain };
 }
 
+function sep(url) { return url.includes('?') ? '&' : '?'; }
+
 export async function POST(request) {
   const form = await request.formData();
   const token = cookies().get('booking_admin_token')?.value || null;
@@ -36,7 +38,7 @@ export async function POST(request) {
 
   if (selectedDays.length === 0) {
     const message = encodeURIComponent('Please select at least one day of the week');
-    return NextResponse.redirect(new URL(`${redirectBase}&error=${message}`, baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}error=${message}`, baseUrl), 302);
   }
 
   const sharedFields = {
@@ -74,15 +76,15 @@ export async function POST(request) {
 
   if (failures.length > 0 && failures.length === selectedDays.length) {
     const message = encodeURIComponent(failures[0] || 'Unable to create availability rules');
-    return NextResponse.redirect(new URL(`${redirectBase}&error=${message}`, baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}error=${message}`, baseUrl), 302);
   }
   if (failures.length > 0) {
     const created = selectedDays.length - failures.length;
     const message = encodeURIComponent(`${created} rule(s) created. Failed: ${failures.join('; ')}`);
-    return NextResponse.redirect(new URL(`${redirectBase}&success=${message}`, baseUrl), 302);
+    return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}success=${message}`, baseUrl), 302);
   }
 
   const count = selectedDays.length;
   const message = count === 1 ? 'Rule%20created' : encodeURIComponent(`${count} rules created`);
-  return NextResponse.redirect(new URL(`${redirectBase}&success=${message}`, baseUrl), 302);
+  return NextResponse.redirect(new URL(`${redirectBase}${sep(redirectBase)}success=${message}`, baseUrl), 302);
 }

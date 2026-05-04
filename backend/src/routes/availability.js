@@ -91,16 +91,22 @@ router.get('/', async (req, res, next) => {
       );
 
       // 6. Run slot generator
+      const maxHours = resource.max_booking_duration_hours
+        ? Number(resource.max_booking_duration_hours)
+        : null;
+      const defaultSlotDuration = maxHours ? Math.round(maxHours * 60) : 60;
+
       const { slots, per_day } = generateAvailability({
         resourceId,
-        capacity:   Number(resource.capacity || 1),
+        capacity:            Number(resource.capacity || 1),
         timezone,
         fromDate,
         toDate,
-        rules:      rulesResult.rows,
-        exceptions: exceptionsResult.rows,
-        blocks:     blocksResult.rows,
-        bookings:   bookingsResult.rows,
+        rules:               rulesResult.rows,
+        exceptions:          exceptionsResult.rows,
+        blocks:              blocksResult.rows,
+        bookings:            bookingsResult.rows,
+        defaultSlotDuration,
       });
 
       return {

@@ -1,10 +1,19 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function AvailabilityRulesList({ rules, resourceId, returnBase }) {
+  const router = useRouter();
+
   if (!Array.isArray(rules) || !rules.length) {
     return <p className="text-secondary mb-0">No availability rules yet. Click Add rule to create the first one.</p>;
+  }
+
+  function handleEdit(ruleId) {
+    const sep = returnBase.includes('?') ? '&' : '?';
+    router.push(`${returnBase}${sep}edit_rule=${ruleId}`, { scroll: false });
   }
 
   return (
@@ -36,9 +45,13 @@ export default function AvailabilityRulesList({ rules, resourceId, returnBase })
                 </div>
               </div>
               <div className="d-flex gap-2">
-                <a className="btn btn-outline-secondary btn-sm" href={`${returnBase}&edit_rule=${rule.id}`}>
+                <button
+                  className="btn btn-outline-secondary btn-sm"
+                  type="button"
+                  onClick={() => handleEdit(rule.id)}
+                >
                   Edit
-                </a>
+                </button>
                 <form action="/availability-rule-actions/delete" method="post">
                   <input type="hidden" name="id" value={rule.id} />
                   <input type="hidden" name="resource_id" value={resourceId} />
