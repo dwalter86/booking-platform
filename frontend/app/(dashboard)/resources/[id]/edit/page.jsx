@@ -54,12 +54,15 @@ export default async function ResourceEditPage({ params, searchParams }) {
   }
 
   // Fetch availability data
-  const [rulesRes, exceptionsRes] = await Promise.all([
+  const [rulesRes, exceptionsRes, subscriptionRes] = await Promise.all([
     apiFetch(`/api/availability-rules?resource_id=${id}`),
     apiFetch(`/api/availability-exceptions?resource_id=${id}`),
+    apiFetch('/api/plans/subscription'),
   ]);
-  const rules      = rulesRes.ok      ? await rulesRes.json()      : [];
-  const exceptions = exceptionsRes.ok ? await exceptionsRes.json() : [];
+  const rules        = rulesRes.ok        ? await rulesRes.json()        : [];
+  const exceptions   = exceptionsRes.ok   ? await exceptionsRes.json()   : [];
+  const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
+  const isSolo       = subscription?.plan_code === 'solo';
 
   const success = searchParams?.success || '';
   const error   = searchParams?.error   || '';
@@ -114,9 +117,18 @@ export default async function ResourceEditPage({ params, searchParams }) {
                 <label className="form-label">Booking mode</label>
                 <select className="form-select" name="booking_mode" defaultValue={asValue(resource.booking_mode, 'free')}>
                   <option value="free">Free</option>
-                  <option value="availability_only">Availability only</option>
-                  <option value="hybrid">Hybrid</option>
+                  <option value="availability_only" disabled={isSolo}>
+                    Availability only{isSolo ? ' (Business+)' : ''}
+                  </option>
+                  <option value="hybrid" disabled={isSolo}>
+                    Hybrid{isSolo ? ' (Business+)' : ''}
+                  </option>
                 </select>
+                {isSolo && (
+                  <div className="form-hint text-warning">
+                    Upgrade to Business to unlock additional booking modes.
+                  </div>
+                )}
               </div>
               <div className="col-md-4">
                 <label className="form-label">Timezone</label>
@@ -281,10 +293,12 @@ export default async function ResourceEditPage({ params, searchParams }) {
       {/* ── Booking form ── */}
       <div className="card mb-4">
         <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
-          <h3 className="card-title mb-0" style={{ color: '#fff' }}>Booking form</h3>
-          <p className="card-subtitle mt-1" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
-            Choose the layout customers see when booking this resource. Changes save automatically.
-          </p>
+          <div>
+            <h3 className="card-title mb-1" style={{ color: '#fff' }}>Booking form</h3>
+            <p className="card-subtitle mb-0" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+              Choose the layout customers see when booking this resource. Changes save automatically.
+            </p>
+          </div>
         </div>
         <div className="card-body">
           <BookingFormTypeSelector
@@ -298,10 +312,12 @@ export default async function ResourceEditPage({ params, searchParams }) {
       {/* ── Availability ── */}
       <div className="card mb-4">
         <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
-          <h3 className="card-title mb-0" style={{ color: '#fff' }}>Availability</h3>
-          <p className="card-subtitle mt-1" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
-            Set the weekly schedule and any date-specific exceptions for this resource.
-          </p>
+          <div>
+            <h3 className="card-title mb-1" style={{ color: '#fff' }}>Availability</h3>
+            <p className="card-subtitle mb-0" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+              Set the weekly schedule and any date-specific exceptions for this resource.
+            </p>
+          </div>
         </div>
         <div className="card-body">
           <div className="d-flex flex-column gap-4">
@@ -311,12 +327,14 @@ export default async function ResourceEditPage({ params, searchParams }) {
               <Link
                 className={`btn btn-sm ${show === 'rule' ? 'btn-primary' : 'btn-outline-primary'}`}
                 href={show === 'rule' ? returnBase : `${returnBase}?show=rule`}
+                scroll={false}
               >
                 Add rule
               </Link>
               <Link
                 className={`btn btn-sm ${show === 'exception' ? 'btn-secondary' : 'btn-outline-secondary'}`}
                 href={show === 'exception' ? returnBase : `${returnBase}?show=exception`}
+                scroll={false}
               >
                 Add exception
               </Link>

@@ -3,6 +3,15 @@ import { withTransaction } from '../lib/db.js';
 import { AppError } from '../lib/errors.js';
 import { resolveTenant } from '../middleware/tenant.js';
 import { getTenantEntitlements, checkMonthlyLimit, incrementMonthlyUsage } from '../services/entitlements-service.js';
+import rateLimit from 'express-rate-limit';
+
+const publicBookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many booking requests. Please try again later.' }
+});
 
 const router = Router();
 
@@ -91,7 +100,7 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
 // POST /draft  — create or update a booking draft, return token
 // ---------------------------------------------------------------------------
 
-router.post('/draft', resolveTenant, async (req, res, next) => {
+router.post('/draft', publicBookingLimiter, resolveTenant, async (req, res, next) => {
   try {
     if (!req.tenant) throw new AppError(400, 'Unable to resolve tenant from subdomain/header.');
 
@@ -220,7 +229,7 @@ router.get('/draft/:token', resolveTenant, async (req, res, next) => {
 // POST /request  — submit final booking, consume draft if present
 // ---------------------------------------------------------------------------
 
-router.post('/request', resolveTenant, async (req, res, next) => {
+router.post('/request', publicBookingLimiter, resolveTenant, async (req, res, next) => {
   try {
     if (!req.tenant) throw new AppError(400, 'Unable to resolve tenant from subdomain/header.');
 

@@ -66,7 +66,7 @@ app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/calendar-connections', calendarConnectionRoutes);
 app.use('/api/admin/audit-log', auditRoutes);
-app.use('/api/public-bookings', publicBookingLimiter, publicBookingsRoutes);
+app.use('/api/public-bookings', publicBookingsRoutes);
 app.use('/api/availability-rules', availabilityRulesRouter);
 app.use('/api/availability-exceptions', availabilityExceptionsRouter);
 app.use('/api/superadmin', superAdminRoutes);

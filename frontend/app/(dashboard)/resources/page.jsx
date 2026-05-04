@@ -68,8 +68,13 @@ export default async function ResourcesPage({ searchParams }) {
   const host = forwardedHost || headerStore.get('host') || 'localhost';
   const proto = headerStore.get('x-forwarded-proto') || 'http';
   const baseUrl = `${proto}://${host}`;
-  const response = await apiFetch('/api/resources');
+  const [response, subscriptionRes] = await Promise.all([
+    apiFetch('/api/resources'),
+    apiFetch('/api/plans/subscription'),
+  ]);
   const rows = response.ok ? await response.json() : [];
+  const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
+  const isSolo = subscription?.plan_code === 'solo';
   const error = searchParams?.error || '';
   const success = searchParams?.success || '';
 
@@ -248,9 +253,18 @@ export default async function ResourcesPage({ searchParams }) {
                       <label className="form-label">Booking mode</label>
                       <select className="form-select" name="booking_mode" defaultValue="free">
                         <option value="free">Free</option>
-                        <option value="availability_only">Availability only</option>
-                        <option value="hybrid">Hybrid</option>
+                        <option value="availability_only" disabled={isSolo}>
+                          Availability only{isSolo ? ' (Business+)' : ''}
+                        </option>
+                        <option value="hybrid" disabled={isSolo}>
+                          Hybrid{isSolo ? ' (Business+)' : ''}
+                        </option>
                       </select>
+                      {isSolo && (
+                        <div className="form-hint text-warning">
+                          Upgrade to Business to unlock additional booking modes.
+                        </div>
+                      )}
                     </div>
                     <div className="col-12">
                       <label className="form-label">Timezone</label>
@@ -612,9 +626,18 @@ export default async function ResourcesPage({ searchParams }) {
                       <label className="form-label">Booking mode</label>
                       <select className="form-select" name="booking_mode" defaultValue={asValue(selectedResource.booking_mode, 'free')}>
                         <option value="free">Free</option>
-                        <option value="availability_only">Availability only</option>
-                        <option value="hybrid">Hybrid</option>
+                        <option value="availability_only" disabled={isSolo}>
+                          Availability only{isSolo ? ' (Business+)' : ''}
+                        </option>
+                        <option value="hybrid" disabled={isSolo}>
+                          Hybrid{isSolo ? ' (Business+)' : ''}
+                        </option>
                       </select>
+                      {isSolo && (
+                        <div className="form-hint text-warning">
+                          Upgrade to Business to unlock additional booking modes.
+                        </div>
+                      )}
                     </div>
                     <div className="col-12">
                       <label className="form-label">Timezone</label>
