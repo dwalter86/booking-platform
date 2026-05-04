@@ -7,6 +7,7 @@ import { apiFetch, requireAuth } from '../../../lib/auth';
 import DayOfWeekSelector from '../../../components/DayOfWeekSelector';
 import AllDayToggle from '../../../components/AllDayToggle';
 import CopyButton from '../../../components/CopyButton';
+import DeleteResourceButton from '../../../components/DeleteResourceButton';
 
 const DAYS = [
   { value: 0, label: 'Sunday' },
@@ -251,19 +252,20 @@ export default async function ResourcesPage({ searchParams }) {
                     </div>
                     <div className="col-6">
                       <label className="form-label">Booking mode</label>
-                      <select className="form-select" name="booking_mode" defaultValue="free">
-                        <option value="free">Free</option>
-                        <option value="availability_only" disabled={isSolo}>
-                          Availability only{isSolo ? ' (Business+)' : ''}
-                        </option>
-                        <option value="hybrid" disabled={isSolo}>
-                          Hybrid{isSolo ? ' (Business+)' : ''}
-                        </option>
-                      </select>
-                      {isSolo && (
-                        <div className="form-hint text-warning">
-                          Upgrade to Business to unlock additional booking modes.
-                        </div>
+                      {isSolo ? (
+                        <>
+                          <input type="hidden" name="booking_mode" value="availability_only" />
+                          <div className="form-control-plaintext text-secondary">Availability only</div>
+                          <div className="form-hint">
+                            <a href="/upgrade">Upgrade to Business</a> to unlock Free and Hybrid booking modes.
+                          </div>
+                        </>
+                      ) : (
+                        <select className="form-select" name="booking_mode" defaultValue="free">
+                          <option value="free">Free</option>
+                          <option value="availability_only">Availability only</option>
+                          <option value="hybrid">Hybrid</option>
+                        </select>
                       )}
                     </div>
                     <div className="col-12">
@@ -624,19 +626,23 @@ export default async function ResourcesPage({ searchParams }) {
                     </div>
                     <div className="col-6">
                       <label className="form-label">Booking mode</label>
-                      <select className="form-select" name="booking_mode" defaultValue={asValue(selectedResource.booking_mode, 'free')}>
-                        <option value="free">Free</option>
-                        <option value="availability_only" disabled={isSolo}>
-                          Availability only{isSolo ? ' (Business+)' : ''}
-                        </option>
-                        <option value="hybrid" disabled={isSolo}>
-                          Hybrid{isSolo ? ' (Business+)' : ''}
-                        </option>
-                      </select>
-                      {isSolo && (
-                        <div className="form-hint text-warning">
-                          Upgrade to Business to unlock additional booking modes.
-                        </div>
+                      {isSolo ? (
+                        <>
+                          <input type="hidden" name="booking_mode" value={asValue(selectedResource.booking_mode, 'availability_only')} />
+                          <div className="form-control-plaintext text-secondary">
+                            {selectedResource.booking_mode === 'free' ? 'Free' :
+                             selectedResource.booking_mode === 'hybrid' ? 'Hybrid' : 'Availability only'}
+                          </div>
+                          <div className="form-hint">
+                            <a href="/upgrade">Upgrade to Business</a> to unlock all booking modes.
+                          </div>
+                        </>
+                      ) : (
+                        <select className="form-select" name="booking_mode" defaultValue={asValue(selectedResource.booking_mode, 'free')}>
+                          <option value="free">Free</option>
+                          <option value="availability_only">Availability only</option>
+                          <option value="hybrid">Hybrid</option>
+                        </select>
                       )}
                     </div>
                     <div className="col-12">
@@ -675,10 +681,7 @@ export default async function ResourcesPage({ searchParams }) {
                     </div>
                     <div className="col-12 d-flex justify-content-between align-items-center">
                       <button className="btn btn-primary" type="submit">Save changes</button>
-                      <form action="/resource-actions/delete" method="post">
-                        <input type="hidden" name="id" value={selectedResource.id} />
-                        <button className="btn btn-outline-danger" type="submit">Delete</button>
-                      </form>
+                      <DeleteResourceButton resourceId={selectedResource.id} hasBookings={false} />
                     </div>
                   </div>
                 </form>

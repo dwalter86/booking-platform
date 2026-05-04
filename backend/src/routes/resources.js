@@ -12,7 +12,7 @@ const VALID_FORM_TYPES = ['classic', 'minimal', 'split', 'cards'];
 router.get('/', requireAuth, asyncHandler(async (req, res) => {
   const rows = await withTenantContext(req.auth.tenant_id, async (client) => {
     const result = await client.query(
-      `SELECT * FROM public.resources ORDER BY created_at DESC`
+      `SELECT * FROM public.resources WHERE archived_at IS NULL ORDER BY created_at DESC`
     );
     return result.rows;
   });
@@ -144,15 +144,57 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
 }));
 
 router.delete('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  await withTenantContext(req.auth.tenant_id, async (client) => {
-    const deleted = await client.query(
-      `DELETE FROM public.resources WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+  const result = await withTenantContext(req.auth.tenant_id, async (client) => {
+    // Check resource exists
+    const resourceResult = await client.query(
+      `SELECT id FROM public.resources WHERE id = $1 AND tenant_id = $2 AND archived_at IS NULL`,
       [req.params.id, req.auth.tenant_id]
     );
-    if (!deleted.rowCount) throw new AppError(404, 'Resource not found.');
-    await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'resource', req.params.id, 'deleted');
+    if (!resourceResult.rowCount) throw new AppError(404, 'Resource not found.');
+
+    // Check for any bookings
+    const bookingsResult = await client.query(
+      `SELECT COUNT(*)::int AS total FROM public.bookings WHERE resource_id = $1 AND tenant_id = $2`,
+      [req.params.id, req.auth.tenant_id]
+    );
+    const hasBookings = bookingsResult.rows[0].total > 0;
+
+    if (hasBookings) {
+      // Cancel any provisional bookings
+      await client.query(
+        `UPDATE public.bookings
+         SET status = 'cancelled', updated_at = now()
+         WHERE resource_id = $1 AND tenant_id = $2 AND status = 'provisional'`,
+        [req.params.id, req.auth.tenant_id]
+      );
+
+      // Archive the resource
+      await client.query(
+        `UPDATE public.resources
+         SET archived_at = now(), is_active = false, updated_at = now()
+         WHERE id = $1 AND tenant_id = $2`,
+        [req.params.id, req.auth.tenant_id]
+      );
+
+      await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'resource', req.params.id, 'archived', {
+        reason: 'Deleted with existing bookings — resource archived, provisional bookings cancelled.'
+      });
+
+      return { archived: true };
+    } else {
+      // No bookings — hard delete
+      await client.query(
+        `DELETE FROM public.resources WHERE id = $1 AND tenant_id = $2`,
+        [req.params.id, req.auth.tenant_id]
+      );
+
+      await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'resource', req.params.id, 'deleted');
+
+      return { archived: false };
+    }
   });
-  res.status(204).send();
+
+  res.status(200).json(result);
 }));
 
 export default router;

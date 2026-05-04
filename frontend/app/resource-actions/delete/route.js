@@ -49,6 +49,14 @@ export async function POST(request) {
       const message = encodeURIComponent(data?.error || 'Unable to delete resource');
       return NextResponse.redirect(new URL(`/resources?error=${message}`, baseUrl), 302);
     }
+
+    const data = await response.json().catch(() => ({}));
+    if (data.archived) {
+      return NextResponse.redirect(
+        new URL('/resources?success=Resource%20archived.%20Existing%20bookings%20have%20been%20preserved%20and%20provisional%20bookings%20cancelled.', baseUrl),
+        302
+      );
+    }
   } catch {
     return NextResponse.redirect(new URL('/resources?error=API%20unavailable', baseUrl), 302);
   }

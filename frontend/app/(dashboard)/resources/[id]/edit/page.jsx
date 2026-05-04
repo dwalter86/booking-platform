@@ -6,6 +6,7 @@ import AvailabilityExceptionsList from '../../../../../components/AvailabilityEx
 import DayOfWeekSelector from '../../../../../components/DayOfWeekSelector';
 import AllDayToggle from '../../../../../components/AllDayToggle';
 import { apiFetch, requireAuth } from '../../../../../lib/auth';
+import DeleteResourceButton from '../../../../../components/DeleteResourceButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,19 +116,23 @@ export default async function ResourceEditPage({ params, searchParams }) {
               </div>
               <div className="col-md-4">
                 <label className="form-label">Booking mode</label>
-                <select className="form-select" name="booking_mode" defaultValue={asValue(resource.booking_mode, 'free')}>
-                  <option value="free">Free</option>
-                  <option value="availability_only" disabled={isSolo}>
-                    Availability only{isSolo ? ' (Business+)' : ''}
-                  </option>
-                  <option value="hybrid" disabled={isSolo}>
-                    Hybrid{isSolo ? ' (Business+)' : ''}
-                  </option>
-                </select>
-                {isSolo && (
-                  <div className="form-hint text-warning">
-                    Upgrade to Business to unlock additional booking modes.
-                  </div>
+                {isSolo ? (
+                  <>
+                    <input type="hidden" name="booking_mode" value={asValue(resource.booking_mode, 'availability_only')} />
+                    <div className="form-control-plaintext text-secondary">
+                      {resource.booking_mode === 'free' ? 'Free' :
+                       resource.booking_mode === 'hybrid' ? 'Hybrid' : 'Availability only'}
+                    </div>
+                    <div className="form-hint">
+                      <a href="/upgrade">Upgrade to Business</a> to unlock all booking modes.
+                    </div>
+                  </>
+                ) : (
+                  <select className="form-select" name="booking_mode" defaultValue={asValue(resource.booking_mode, 'free')}>
+                    <option value="free">Free</option>
+                    <option value="availability_only">Availability only</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
                 )}
               </div>
               <div className="col-md-4">
@@ -246,15 +251,12 @@ export default async function ResourceEditPage({ params, searchParams }) {
 
               {/* Advanced settings */}
               <div className="col-12">
-                <details>
-                  <summary className="text-secondary" style={{ cursor: 'pointer', userSelect: 'none', fontSize: 13 }}>
-                    Advanced settings
-                  </summary>
-                  <div className="row g-3 mt-2">
+                {isSolo ? (
+                  <div className="row g-3">
                     <div className="col-md-4">
-                      <label className="form-label">Max booking hours</label>
-                      <input className="form-control" type="number" step="0.5" min="0" name="max_booking_duration_hours" defaultValue={asValue(resource.max_booking_duration_hours)} />
-                      <div className="form-text">Leave blank for no limit.</div>
+                      <label className="form-label fw-medium">Max booking hours</label>
+                      <input className="form-control" type="number" step="0.5" min="0.5" name="max_booking_duration_hours" defaultValue={asValue(resource.max_booking_duration_hours, '1')} />
+                      <div className="form-text">Recommended for slot-based booking. Sets the maximum length of each booking.</div>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Min notice hours</label>
@@ -275,15 +277,43 @@ export default async function ResourceEditPage({ params, searchParams }) {
                       <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue={asValue(resource.buffer_after_minutes, '0')} />
                     </div>
                   </div>
-                </details>
+                ) : (
+                  <details>
+                    <summary className="text-secondary" style={{ cursor: 'pointer', userSelect: 'none', fontSize: 13 }}>
+                      Advanced settings
+                    </summary>
+                    <div className="row g-3 mt-2">
+                      <div className="col-md-4">
+                        <label className="form-label">Max booking hours</label>
+                        <input className="form-control" type="number" step="0.5" min="0" name="max_booking_duration_hours" defaultValue={asValue(resource.max_booking_duration_hours)} />
+                        <div className="form-text">Leave blank for no limit.</div>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Min notice hours</label>
+                        <input className="form-control" type="number" min="0" name="min_notice_hours" defaultValue={asValue(resource.min_notice_hours, '0')} />
+                        <div className="form-text">How far in advance a booking must be made.</div>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Max advance days</label>
+                        <input className="form-control" type="number" min="0" name="max_advance_booking_days" defaultValue={asValue(resource.max_advance_booking_days)} />
+                        <div className="form-text">How far ahead customers can book. Leave blank for no limit.</div>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Buffer before (mins)</label>
+                        <input className="form-control" type="number" min="0" name="buffer_before_minutes" defaultValue={asValue(resource.buffer_before_minutes, '0')} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Buffer after (mins)</label>
+                        <input className="form-control" type="number" min="0" name="buffer_after_minutes" defaultValue={asValue(resource.buffer_after_minutes, '0')} />
+                      </div>
+                    </div>
+                  </details>
+                )}
               </div>
 
               <div className="col-12 d-flex justify-content-between align-items-center">
                 <button className="btn btn-primary" type="submit">Save changes</button>
-                <form action="/resource-actions/delete" method="post" style={{ display: 'inline' }}>
-                  <input type="hidden" name="id" value={resource.id} />
-                  <button className="btn btn-outline-danger" type="submit">Delete resource</button>
-                </form>
+                <DeleteResourceButton resourceId={resource.id} hasBookings={false} />
               </div>
             </div>
           </form>
