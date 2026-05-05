@@ -15,23 +15,24 @@ function badgeClass(status) {
 
 async function load() {
   await requireAuth();
-  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes] = await Promise.all([
+  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes, entitlementRes] = await Promise.all([
     apiFetch('/api/resources'),
     apiFetch('/api/bookings?per_page=5'),
     apiFetch('/api/tenant/profile'),
     apiFetch('/api/unavailability-blocks'),
     apiFetch('/api/plans/subscription'),
+    apiFetch('/api/entitlement'),
   ]);
 
   const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
   const bookingsRaw  = bookingsRes.ok  ? await bookingsRes.json()  : {};
 
-  const resources    = Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || []);
-  const bookings     = Array.isArray(bookingsRaw)  ? bookingsRaw  : (bookingsRaw.data  || []);
+  const resources     = Array.isArray(resourcesRaw) ? resourcesRaw : (resourcesRaw.data || []);
+  const bookings      = Array.isArray(bookingsRaw)  ? bookingsRaw  : (bookingsRaw.data  || []);
   const totalBookings = bookingsRaw?.pagination?.total_count ?? bookings.length;
-  const blocksRaw    = blocksRes.ok ? await blocksRes.json() : [];
+  const blocksRaw     = blocksRes.ok ? await blocksRes.json() : [];
   const unavailabilityBlocks = Array.isArray(blocksRaw) ? blocksRaw : (blocksRaw.data || []);
-  const tenant       = tenantRes.ok ? await tenantRes.json() : null;
+  const tenant        = tenantRes.ok ? await tenantRes.json() : null;
 
   const allRulesByResource = {};
   if (resources.length > 0) {
@@ -46,7 +47,87 @@ async function load() {
   const hasAnyRules = Object.values(allRulesByResource).some(r => r.length > 0);
 
   const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
-  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription };
+  const entitlement  = entitlementRes.ok  ? await entitlementRes.json()  : null;
+
+  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement };
+}
+
+function PlanHeaderCard({ entitlement }) {
+  if (!entitlement) return null;
+
+  const bpm       = entitlement.usage?.bookings_per_month;
+  const status    = entitlement.subscriptionStatus;
+  const planName  = entitlement.planName;
+  const periodEnd = entitlement.periodEnd;
+
+  const pct       = bpm?.limit ? Math.min(100, Math.round((bpm.current / bpm.limit) * 100)) : null;
+  const barColour =
+    pct == null   ? 'bg-primary' :
+    pct >= 90     ? 'bg-danger'  :
+    pct >= 70     ? 'bg-warning' : 'bg-primary';
+
+  const statusLabel =
+    status === 'trial'   ? 'Trial'        :
+    status === 'grace'   ? 'Grace period' :
+    status === 'active'  ? 'Active'       :
+    status === 'expired' ? 'Expired'      : status;
+
+  const statusColour =
+    status === 'active'  ? 'bg-success-lt text-success' :
+    status === 'trial'   ? 'bg-info-lt text-info'       :
+    status === 'grace'   ? 'bg-warning-lt text-warning' :
+                           'bg-secondary-lt text-secondary';
+
+  const trialDaysLeft = status === 'trial' && periodEnd
+    ? Math.max(0, Math.ceil((new Date(periodEnd) - new Date()) / 86400000))
+    : null;
+
+  return (
+    <div className="card mb-0" style={{ minWidth: '360px', maxWidth: '380px' }}>
+      <div className="card-body p-3">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <div>
+            <div className="text-secondary" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>
+              Current plan
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="fw-bold" style={{ fontSize: '0.95rem' }}>{planName ?? '—'}</span>
+              <span className={`badge ${statusColour}`} style={{ fontSize: '0.65rem' }}>{statusLabel}</span>
+            </div>
+            {trialDaysLeft !== null && (
+              <div className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '2px' }}>
+                {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} left in trial
+              </div>
+            )}
+          </div>
+          <a href="/administration?tab=plans" className="btn btn-sm btn-outline-primary ms-3" style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+            Upgrade
+          </a>
+        </div>
+        {bpm && (
+          <div>
+            <div className="d-flex justify-content-between mb-1">
+              <span className="text-secondary" style={{ fontSize: '0.7rem' }}>Bookings this month</span>
+              <span className="text-secondary" style={{ fontSize: '0.7rem' }}>
+                {bpm.current}{bpm.limit != null ? ` / ${bpm.limit}` : ''}
+                {pct != null ? ` · ${pct}%` : ''}
+              </span>
+            </div>
+            <div className="progress progress-sm mb-0">
+              <div
+                className={`progress-bar ${barColour}`}
+                style={{ width: pct != null ? `${pct}%` : '0%' }}
+                role="progressbar"
+                aria-valuenow={bpm.current}
+                aria-valuemin={0}
+                aria-valuemax={bpm.limit ?? 100}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function OnboardingChecklist({ tenant, resources, hasAnyRules }) {
@@ -153,8 +234,15 @@ function OnboardingChecklist({ tenant, resources, hasAnyRules }) {
   return inner;
 }
 
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription } = await load();
+  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
@@ -162,20 +250,31 @@ export default async function DashboardPage() {
   const bookingComplete  = Boolean(tenant?.public_booking_enabled);
   const allComplete      = profileComplete && resourceComplete && rulesComplete && bookingComplete;
   const hideChecklist    = allComplete;
+  const todayStr    = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const todayBookings = bookings.filter(b => {
+    const d = new Date(b.start_at);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth()    === now.getMonth()    &&
+           d.getDate()     === now.getDate();
+  }).length;
+
+  const subParts = [`${todayStr}.`];
+  if (todayBookings === 0) {
+    subParts.push('No bookings starting today.');
+  } else {
+    subParts.push(`${todayBookings} booking${todayBookings !== 1 ? 's' : ''} starting today.`);
+  }
+  if (!hideChecklist) subParts.push('Complete setup to go live.');
+
+  const subtitle = subParts.join('  ·  ');
 
   return (
-    <LayoutShell title="Dashboard" headerAction={
-      subscription?.plan_name ? (
-        <span className={`badge ${
-          subscription.status === 'trial'  ? 'bg-info-lt'    :
-          subscription.status === 'grace'  ? 'bg-warning-lt' :
-          subscription.status === 'active' ? 'bg-green-lt'   : 'bg-secondary-lt'
-        }`} style={{ fontSize: '0.75rem' }}>
-          {subscription.plan_name}
-          {subscription.status === 'trial' && ' (Trial)'}
-        </span>
-      ) : null
-    }>
+    <LayoutShell
+      title={`${greeting()}, ${tenant?.display_name || 'there'}.`}
+      subtitle={subtitle}
+      headerAction={<PlanHeaderCard entitlement={entitlement} />}
+    >
       {!hideChecklist && (
         <OnboardingChecklist
           tenant={tenant}
@@ -216,7 +315,7 @@ export default async function DashboardPage() {
                 </thead>
                 <tbody>
                   {bookings.length === 0 ? (
-                    <tr><td colSpan="5" className="text-secondary">No bookings yet.</td></tr>
+                    <tr><td colSpan="6" className="text-secondary">No bookings yet.</td></tr>
                   ) : bookings.slice(0, 5).map((row) => (
                     <tr key={row.id}>
                       <td>{row.customer_name || <span className="text-secondary">—</span>}</td>

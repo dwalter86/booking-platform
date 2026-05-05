@@ -9,7 +9,7 @@ const navItems = [
   ['Settings', '/administration'],
 ];
 
-export default function LayoutShell({ title, headerAction, children }) {
+export default function LayoutShell({ title, subtitle, headerAction, children }) {
   return (
     <div className="page">
       <aside className="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
@@ -35,6 +35,9 @@ export default function LayoutShell({ title, headerAction, children }) {
             <div className="row g-2 align-items-center">
               <div className="col">
                 <h2 className="page-title mb-0">{title}</h2>
+                {subtitle && (
+                  <p className="text-secondary mb-0 mt-1" style={{ fontSize: '0.85rem' }}>{subtitle}</p>
+                )}
               </div>
               {headerAction && <div className="col-auto d-flex align-items-center">{headerAction}</div>}
             </div>
