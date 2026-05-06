@@ -150,7 +150,7 @@ export default function AdminCalendarClient({ resources = [], unavailabilityBloc
       .filter((row) => showProvisional || row.status !== 'provisional')
       .map((row) => ({
         id: `booking-${row.id}`,
-        title: `${row.resource_name || 'Resource'} - ${row.customer_name || 'Booking'} (${row.status})`,
+        title: `${row.customer_name || 'Booking'}`,
         start: toIso(row.start_at),
         end: toIso(row.end_at),
         backgroundColor: bookingColor(row.status),
