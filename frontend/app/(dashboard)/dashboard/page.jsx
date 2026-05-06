@@ -261,7 +261,16 @@ export default async function DashboardPage() {
 
   const subParts = [`${todayStr}.`];
   if (todayBookings === 0) {
-    subParts.push('No bookings starting today.');
+    const upcoming = bookings
+      .filter(b => b.status !== 'cancelled' && new Date(b.start_at) > new Date())
+      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at))[0];
+    if (upcoming) {
+      const upcomingDate = new Date(upcoming.start_at).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      const upcomingTime = new Date(upcoming.start_at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
+      subParts.push(`No bookings today. Next: ${upcoming.customer_name || 'Booking'}, ${upcomingDate} at ${upcomingTime}.`);
+    } else {
+      subParts.push('No bookings starting today.');
+    }
   } else {
     subParts.push(`${todayBookings} booking${todayBookings !== 1 ? 's' : ''} starting today.`);
   }
@@ -273,7 +282,21 @@ export default async function DashboardPage() {
     <LayoutShell
       title={`${greeting()}, ${tenant?.display_name || 'there'}.`}
       subtitle={subtitle}
-      headerAction={<PlanHeaderCard entitlement={entitlement} />}
+      headerAction={
+      <>
+        <PlanHeaderCard entitlement={entitlement} />
+        <div className="card mb-0 ms-2" style={{ minWidth: '160px', alignSelf: 'stretch' }}>
+          <div className="card-body p-3 d-flex flex-column justify-content-center">
+            <a href="/bookings?status=provisional" className="btn btn-sm btn-outline-warning w-100 mb-2">
+              Pending{bookings.filter(b => b.status === 'provisional').length > 0 ? ` (${bookings.filter(b => b.status === 'provisional').length})` : ''}
+            </a>
+            <a href="/book" target="_blank" className="btn btn-sm btn-outline-primary w-100">
+              New booking
+            </a>
+          </div>
+        </div>
+      </>
+    }
     >
       {!hideChecklist && (
         <OnboardingChecklist
@@ -281,6 +304,15 @@ export default async function DashboardPage() {
           resources={resources}
           hasAnyRules={hasAnyRules}
         />
+      )}
+
+      {bookings.filter(b => b.status === 'provisional').length > 0 && (
+        <div className="alert alert-warning d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <strong>{bookings.filter(b => b.status === 'provisional').length} booking{bookings.filter(b => b.status === 'provisional').length !== 1 ? 's' : ''} awaiting confirmation</strong>
+          </div>
+          <a href="/bookings?status=provisional" className="btn btn-sm btn-warning">Review</a>
+        </div>
       )}
 
       <div className="row mb-4">
