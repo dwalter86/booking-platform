@@ -111,7 +111,7 @@ export default function DashboardCalendarClient({ unavailabilityBlocks = [], res
   const events = useMemo(() => {
     const bookingEvents = bookings.map((row) => ({
       id: `booking-${row.id}`,
-      title: `${row.resource_name || 'Resource'} - ${row.customer_name || 'Booking'}`,
+      title: `${row.customer_name || 'Booking'}`,
       start: toIso(row.start_at),
       end: toIso(row.end_at),
       backgroundColor: bookingColor(row.status),
@@ -178,6 +178,7 @@ export default function DashboardCalendarClient({ unavailabilityBlocks = [], res
               },
             }}
             headerToolbar={false}
+            eventTimeFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
             height="auto"
             events={events}
             dateClick={(info) => setSelectedDate(info.dateStr)}
