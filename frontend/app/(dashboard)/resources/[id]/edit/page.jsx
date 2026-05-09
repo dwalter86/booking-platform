@@ -8,6 +8,7 @@ import AllDayToggle from '../../../../../components/AllDayToggle';
 import { apiFetch, requireAuth } from '../../../../../lib/auth';
 import DeleteResourceButton from '../../../../../components/DeleteResourceButton';
 import SlugInput from '../../../../../components/SlugInput';
+import ResourceMeetingTypes from '../../../../../components/ResourceMeetingTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -333,6 +334,21 @@ export default async function ResourceEditPage({ params, searchParams }) {
             resourceSlug={resource.slug}
             initialValue={asValue(resource.booking_form_type, 'classic')}
           />
+        </div>
+      </div>
+
+      {/* ── Meeting types ── */}
+      <div className="card mb-4">
+        <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
+          <div>
+            <h3 className="card-title mb-1" style={{ color: '#fff' }}>Meeting types</h3>
+            <p className="card-subtitle mb-0" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+              Choose how clients can meet with you for this resource.
+            </p>
+          </div>
+        </div>
+        <div className="card-body">
+          <ResourceMeetingTypes resourceId={resource.id} />
         </div>
       </div>
 

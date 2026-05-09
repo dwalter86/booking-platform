@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import MeetingTypeStep from './MeetingTypeStep';
 import dynamic from 'next/dynamic';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -319,6 +320,9 @@ export default function BookingFormClassic({
   const [slotsError, setSlotsError] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [meetingType, setMeetingType] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [bookerPhone, setBookerPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -522,6 +526,9 @@ export default function BookingFormClassic({
           start_at: startAt,
           end_at: endAt,
           draft_token: currentDraftToken || undefined,
+          meeting_type: meetingType || undefined,
+          location_id: locationId || undefined,
+          booker_phone: bookerPhone || undefined,
         }),
       });
 
@@ -760,6 +767,16 @@ export default function BookingFormClassic({
   return (
     <>
       {stepBar}
+
+      <MeetingTypeStep
+        resource={selectedResource}
+        meetingType={meetingType}
+        setMeetingType={setMeetingType}
+        locationId={locationId}
+        setLocationId={setLocationId}
+        bookerPhone={bookerPhone}
+        setBookerPhone={setBookerPhone}
+      />
 
       {submitError && (
         <div className="alert alert-danger">{submitError}</div>

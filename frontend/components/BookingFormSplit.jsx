@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import MeetingTypeStep from './MeetingTypeStep';
 
 function localDateStr(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -227,6 +228,9 @@ export default function BookingFormSplit({
   const [slotsError, setSlotsError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [meetingType, setMeetingType] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [bookerPhone, setBookerPhone] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [currentDraftToken] = useState(draftToken || null);
 
@@ -300,6 +304,9 @@ export default function BookingFormSplit({
           notes: form.notes.trim() || undefined,
           start_at: startAt, end_at: endAt,
           draft_token: currentDraftToken || undefined,
+          meeting_type: meetingType || undefined,
+          location_id: locationId || undefined,
+          booker_phone: bookerPhone || undefined,
         }),
       });
       const data = await r.json();
@@ -397,6 +404,16 @@ export default function BookingFormSplit({
                   {!selectedSlot && freeStart && ` · ${new Date(freeStart).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}–${new Date(freeEnd).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
                 </div>
               </div>
+
+              <MeetingTypeStep
+                resource={selectedResource}
+                meetingType={meetingType}
+                setMeetingType={setMeetingType}
+                locationId={locationId}
+                setLocationId={setLocationId}
+                bookerPhone={bookerPhone}
+                setBookerPhone={setBookerPhone}
+              />
 
               {submitError && <div className="alert alert-danger">{submitError}</div>}
 

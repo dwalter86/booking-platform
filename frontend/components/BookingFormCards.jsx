@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import MeetingTypeStep from './MeetingTypeStep';
 
 function localDateStr(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -133,6 +134,9 @@ export default function BookingFormCards({ resources = [], apiError = '', initia
   const [slotsError, setSlotsError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [meetingType, setMeetingType] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [bookerPhone, setBookerPhone] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [currentDraftToken] = useState(draftToken || null);
 
@@ -194,7 +198,7 @@ export default function BookingFormCards({ resources = [], apiError = '', initia
       startAt = selectedSlot.start_at; endAt = selectedSlot.end_at;
     }
     try {
-      const r = await fetch('/api/public-bookings/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource_id: resourceId, customer_name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(), customer_email: form.email.trim(), customer_phone: form.phone.trim() || undefined, party_size: form.partySize, notes: form.notes.trim() || undefined, start_at: startAt, end_at: endAt, draft_token: currentDraftToken || undefined }) });
+      const r = await fetch('/api/public-bookings/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource_id: resourceId, customer_name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(), customer_email: form.email.trim(), customer_phone: form.phone.trim() || undefined, party_size: form.partySize, notes: form.notes.trim() || undefined, start_at: startAt, end_at: endAt, draft_token: currentDraftToken || undefined, meeting_type: meetingType || undefined, location_id: locationId || undefined, booker_phone: bookerPhone || undefined }) });
       const data = await r.json();
       if (!r.ok) { setSubmitError(r.status === 409 ? 'This slot was just taken — please choose another.' : data?.error || 'Unable to submit.'); if (r.status === 409) setSelectedSlot(null); return; }
       setSubmitSuccess(true); window.history.replaceState({}, '', window.location.pathname);
@@ -286,7 +290,18 @@ export default function BookingFormCards({ resources = [], apiError = '', initia
       {/* Card 3 — Details */}
       {activeCard >= 3 && (
         <StepCard stepNum={3 + stepOffset} title="Your details" isActive={activeCard === 3} isDone={false}>
-          {submitError && <div className="alert alert-danger">{submitError}</div>}
+        
+        <MeetingTypeStep
+          resource={selectedResource}
+          meetingType={meetingType}
+          setMeetingType={setMeetingType}
+          locationId={locationId}
+          setLocationId={setLocationId}
+          bookerPhone={bookerPhone}
+          setBookerPhone={setBookerPhone}
+        />
+  
+        {submitError && <div className="alert alert-danger">{submitError}</div>}
           <div className="row g-2 mb-2">
             <div className="col-6"><label className="form-label">First name *</label><input type="text" className={`form-control ${fieldErrors.firstName ? 'is-invalid' : ''}`} value={form.firstName} onChange={e => fc('firstName', e.target.value)} placeholder="Jane" /></div>
             <div className="col-6"><label className="form-label">Last name</label><input type="text" className="form-control" value={form.lastName} onChange={e => fc('lastName', e.target.value)} placeholder="Smith" /></div>

@@ -102,6 +102,7 @@ export default function BookingFormTypeSelector({ resourceId, resourceSlug, init
           </div>
         ))}
       </div>
+      <input type="hidden" name="booking_form_type" value={selected} />
       <FormPreview slug={resourceSlug} iframeKey={iframeKey} />
     </div>
   );

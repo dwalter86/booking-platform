@@ -68,7 +68,6 @@ export async function POST(request) {
     timezone: String(form.get('timezone') || 'Europe/London').trim() || 'Europe/London',
     is_active: boolFromForm(form.get('is_active')),
     capacity: numberOrNull(form.get('capacity'), 1) ?? 1,
-    booking_form_type: String(form.get('booking_form_type') || 'classic').trim(),
     auto_confirm: boolFromForm(form.get('auto_confirm')),
     max_booking_duration_hours: numberOrNull(form.get('max_booking_duration_hours')),
     min_notice_hours: numberOrNull(form.get('min_notice_hours'), 0) ?? 0,

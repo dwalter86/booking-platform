@@ -4,6 +4,7 @@ import TrialGraceBanner from './TrialGraceBanner';
 const navItems = [
   ['Dashboard', '/dashboard'],
   ['Resources', '/resources'],
+  ['Locations', '/locations'],
   ['Bookings', '/bookings'],
   ['Calendar', '/calendar'],
   ['Settings', '/administration'],

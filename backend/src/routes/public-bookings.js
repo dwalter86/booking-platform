@@ -77,6 +77,35 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
     });
     const removeAvailoBranding = brandingResult.rows[0]?.is_enabled ?? false;
 
+    // Enrich resources with meeting types and assigned locations
+    const enrichedResources = resourcesResult.rows;
+    if (enrichedResources.length > 0) {
+      const resourceIds = enrichedResources.map(r => r.id);
+      await withTransaction(async (client) => {
+        await client.query(`SELECT app.set_current_tenant($1)`, [req.tenant.id]);
+        const [mtRows, rlRows] = await Promise.all([
+          client.query(
+            `SELECT resource_id, meeting_type, online_platform, online_meeting_url
+               FROM public.resource_meeting_types
+               WHERE resource_id = ANY($1) AND is_active = true`,
+            [resourceIds]
+          ),
+          client.query(
+            `SELECT rl.resource_id, rl.location_id, l.name, l.address_line_1,
+                      l.address_line_2, l.city, l.postcode
+               FROM public.resource_locations rl
+               JOIN public.locations l ON l.id = rl.location_id
+               WHERE rl.resource_id = ANY($1) AND l.is_active = true`,
+            [resourceIds]
+          )
+        ]);
+        for (const r of enrichedResources) {
+          r.meeting_types = mtRows.rows.filter(m => m.resource_id === r.id);
+          r.meeting_locations = rlRows.rows.filter(l => l.resource_id === r.id);
+        }
+      });
+    }
+
     res.json({
       tenant: {
         id:                          req.tenant.id,
@@ -89,7 +118,7 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
         booking_confirmation_message:req.tenant.booking_confirmation_message,
         remove_availio_branding:     removeAvailoBranding,
       },
-      resources: resourcesResult.rows
+  resources: enrichedResources
     });
   } catch (error) {
     next(error);
@@ -255,6 +284,14 @@ router.post('/request', publicBookingLimiter, resolveTenant, async (req, res, ne
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerEmail)) throw new AppError(400, 'customer_email must be a valid email address.');
+  const meetingType = String(req.body?.meeting_type || '').trim() || null;
+  const locationId = String(req.body?.location_id || '').trim() || null;
+  const bookerPhone = String(req.body?.booker_phone || '').trim() || null;
+  const VALID_MEETING_TYPES = ['in_person', 'online', 'telephone'];
+  if (meetingType && !VALID_MEETING_TYPES.includes(meetingType)) throw new AppError(400, 'Invalid meeting_type.');
+  if (meetingType === 'telephone' && !bookerPhone) throw new AppError(400, 'booker_phone is required for telephone bookings.');
+  if (bookerPhone && bookerPhone.length > 50) throw new AppError(400, 'booker_phone must be 50 characters or fewer.');
+  if (meetingType === 'in_person' && !locationId) throw new AppError(400, 'location_id is required for in_person bookings.');
 
     const startAt = new Date(startAtRaw);
     const endAt   = new Date(endAtRaw);
@@ -329,9 +366,11 @@ router.post('/request', publicBookingLimiter, resolveTenant, async (req, res, ne
         `INSERT INTO bookings (
            tenant_id, resource_id, status, start_at, end_at,
            party_size, customer_name, customer_email, customer_phone,
-           notes, source, created_at, updated_at
+           notes, source, created_at, updated_at,
+         meeting_type, location_id, booker_phone
          ) VALUES (
-           $1, $2, 'provisional', $3, $4, $5, $6, $7, $8, $9, 'public', NOW(), NOW()
+           $1, $2, 'provisional', $3, $4, $5, $6, $7, $8, $9, 'public', NOW(), NOW(),
+    $10, $11, $12
          )
          RETURNING id, tenant_id, resource_id, status, start_at, end_at,
                    party_size, customer_name, customer_email, customer_phone,

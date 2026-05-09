@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import MeetingTypeStep from './MeetingTypeStep';
 
 function localDateStr(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -107,6 +108,9 @@ export default function BookingFormMinimal({ resources = [], apiError = '', init
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [meetingType, setMeetingType] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [bookerPhone, setBookerPhone] = useState('');
 
   const selectedResource = useMemo(() => resources.find(r => r.id === resourceId) || null, [resources, resourceId]);
   const bookingMode = selectedResource?.booking_mode || 'free';
@@ -158,7 +162,7 @@ export default function BookingFormMinimal({ resources = [], apiError = '', init
       startAt = selectedSlot.start_at; endAt = selectedSlot.end_at;
     }
     try {
-      const r = await fetch('/api/public-bookings/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource_id: resourceId, customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(), customer_email: email.trim(), customer_phone: phone.trim() || undefined, party_size: partySize, notes: notes.trim() || undefined, start_at: startAt, end_at: endAt, draft_token: currentDraftToken || undefined }) });
+      const r = await fetch('/api/public-bookings/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource_id: resourceId, customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(), customer_email: email.trim(), customer_phone: phone.trim() || undefined, party_size: partySize, notes: notes.trim() || undefined, start_at: startAt, end_at: endAt, draft_token: currentDraftToken || undefined, meeting_type: meetingType || undefined, location_id: locationId || undefined, booker_phone: bookerPhone || undefined }) });
       const data = await r.json();
       if (!r.ok) { setSubmitError(r.status === 409 ? 'This slot was just taken — please choose another time.' : data?.error || 'Unable to submit.'); if (r.status === 409) setSelectedSlot(null); return; }
       setSubmitSuccess(true); window.history.replaceState({}, '', window.location.pathname);
@@ -243,6 +247,15 @@ export default function BookingFormMinimal({ resources = [], apiError = '', init
         {!selectedSlot && freeStart && ` · ${new Date(freeStart).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}–${new Date(freeEnd).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
       </div>
       <h3 className="mb-4">Your details</h3>
+      <MeetingTypeStep
+        resource={selectedResource}
+        meetingType={meetingType}
+        setMeetingType={setMeetingType}
+        locationId={locationId}
+        setLocationId={setLocationId}
+        bookerPhone={bookerPhone}
+        setBookerPhone={setBookerPhone}
+      />
       {submitError && <div className="alert alert-danger">{submitError}</div>}
       <div className="row g-2 mb-2">
         <div className="col-6"><label className="form-label">First name *</label><input type="text" className={`form-control ${fieldErrors.firstName ? 'is-invalid' : ''}`} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jane" /></div>

@@ -117,13 +117,14 @@ export default async function BookingsPage({ searchParams }) {
                     <th>Customer</th>
                     <th>Start</th>
                     <th>End</th>
+                    <th>Meeting</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {bookings.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-secondary">No bookings found.</td>
+                      <td colSpan="7" className="text-secondary">No bookings found.</td>
                     </tr>
                   ) : bookings.map((booking) => {
                     const isSelected = booking.id === selectedBookingId;
@@ -137,6 +138,11 @@ export default async function BookingsPage({ searchParams }) {
                         </td>
                         <td>{formatDateTime(booking.start_at)}</td>
                         <td>{formatDateTime(booking.end_at)}</td>
+                        <td>
+                          {booking.meeting_type === 'in_person' && <span className="badge bg-blue-lt">In person</span>}
+                          {booking.meeting_type === 'online' && <span className="badge bg-cyan-lt">Online</span>}
+                          {booking.meeting_type === 'telephone' && <span className="badge bg-yellow-lt">Telephone</span>}
+                        </td>
                         <td className="text-end">
                           <Link
                             className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
@@ -296,6 +302,22 @@ export default async function BookingsPage({ searchParams }) {
 
                     <dt className="col-sm-4">Cancel reason</dt>
                     <dd className="col-sm-8">{selectedBooking.cancellation_reason || '—'}</dd>
+                    {selectedBooking.meeting_type && (
+                      <>
+                        <dt className="col-sm-4">Meeting</dt>
+                        <dd className="col-sm-8">
+                          {selectedBooking.meeting_type === 'in_person' && <span className="badge bg-blue-lt">In person</span>}
+                          {selectedBooking.meeting_type === 'online' && <span className="badge bg-cyan-lt">Online</span>}
+                          {selectedBooking.meeting_type === 'telephone' && <span className="badge bg-yellow-lt">Telephone</span>}
+                          {selectedBooking.meeting_type === 'online' && selectedBooking.booker_phone == null && (
+                            <div className="text-muted small mt-1">Meeting details provided on confirmation.</div>
+                          )}
+                          {selectedBooking.meeting_type === 'telephone' && selectedBooking.booker_phone && (
+                            <div className="text-muted small mt-1">{selectedBooking.booker_phone}</div>
+                          )}
+                        </dd>
+                      </>
+                    )}
                   </dl>
 
                   <hr />

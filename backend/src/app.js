@@ -22,6 +22,8 @@ import entitlementRoutes from './routes/entitlement.js';
 import superAdminRoutes from './routes/superadmin.js';
 import tenantProfileRoutes from './routes/tenant-profile.js';
 import tenantLogoRoutes from './routes/tenant-logo.js';
+import locationRoutes from './routes/locations.js';
+import resourceMeetingTypeRoutes from './routes/resource-meeting-types.js';
 
 const app = express();
 
@@ -72,6 +74,8 @@ app.use('/api/availability-exceptions', availabilityExceptionsRouter);
 app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/tenant/profile', tenantProfileRoutes);
 app.use('/api/tenant/logo', tenantLogoRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/resources', resourceMeetingTypeRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
