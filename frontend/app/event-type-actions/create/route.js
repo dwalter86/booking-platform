@@ -31,13 +31,13 @@ export async function POST(request) {
   });
 
   const resourceId = payload.resource_id;
-  const base = `/resources/${resourceId}/edit`;
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     const msg = encodeURIComponent(data.error || 'Failed to create event type.');
-    redirect(`${base}?error=${msg}`);
+    redirect(`/event-types/new?resource_id=${resourceId}&error=${msg}`);
   }
 
-  redirect(`${base}?success=Event+type+created+successfully`);
+  const created = await res.json().catch(() => ({}));
+  redirect(`/event-types/${created.id}/edit?success=Event+type+created+successfully`);
 }

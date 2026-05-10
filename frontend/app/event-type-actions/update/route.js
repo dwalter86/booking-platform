@@ -5,9 +5,8 @@ export async function POST(request) {
   const formData = await request.formData();
   const id = formData.get('id');
   const resourceId = formData.get('resource_id');
-  const base = `/resources/${resourceId}/edit`;
 
-  if (!id) redirect(`${base}?error=Missing+event+type+ID`);
+  if (!id) redirect(`/resources/${resourceId}/edit?error=Missing+event+type+ID`);
 
   const payload = {
     name:                         formData.get('name'),
@@ -37,8 +36,8 @@ export async function POST(request) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     const msg = encodeURIComponent(data.error || 'Failed to update event type.');
-    redirect(`${base}?error=${msg}`);
+    redirect(`/event-types/${id}/edit?error=${msg}`);
   }
 
-  redirect(`${base}?success=Event+type+updated+successfully`);
+  redirect(`/event-types/${id}/edit?success=Event+type+updated+successfully`);
 }
