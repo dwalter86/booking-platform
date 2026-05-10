@@ -5,22 +5,7 @@ import CopyButton from '../../../components/CopyButton';
 
 export const dynamic = 'force-dynamic';
 
-function bookingModeLabel(mode) {
-  if (mode === 'availability_only') return 'Availability only';
-  if (mode === 'hybrid') return 'Hybrid';
-  return 'Free';
-}
-
-const BOOKING_FORM_OPTIONS = [
-  { value: 'classic',     label: 'Classic' },
-  { value: 'minimal',     label: 'Minimal' },
-  { value: 'split',       label: 'Split panel' },
-  { value: 'cards',       label: 'Progressive cards' },
-];
-
-function formTypeLabel(type) {
-  return BOOKING_FORM_OPTIONS.find(o => o.value === type)?.label || 'Classic';
-}
+// (removed booking mode and form style helpers — now on event types)
 
 export default async function ResourcesPage({ searchParams }) {
   await requireAuth();
@@ -73,15 +58,14 @@ export default async function ResourcesPage({ searchParams }) {
                     <th>Name</th>
                     <th>Status</th>
                     <th>Capacity</th>
-                    <th>Booking mode</th>
-                    <th>Form style</th>
+                    <th>Timezone</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {!Array.isArray(rows) || rows.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-secondary">
+                      <td colSpan="5" className="text-secondary">
                         No resources found. Click Add resource to create one.
                       </td>
                     </tr>
@@ -99,13 +83,7 @@ export default async function ResourcesPage({ searchParams }) {
                           </span>
                         </td>
                         <td>{row.capacity}</td>
-                        <td>{bookingModeLabel(row.booking_mode)}</td>
-                        <td>
-                          <div className="text-secondary small">{formTypeLabel(row.booking_form_type)}</div>
-                          {row.auto_confirm && (
-                            <span className="badge bg-green-lt mt-1">Auto-confirm</span>
-                          )}
-                        </td>
+                        <td className="text-secondary small">{row.timezone || 'Europe/London'}</td>
                         <td>
                           <div className="d-flex gap-1 flex-wrap justify-content-end">
                             <Link

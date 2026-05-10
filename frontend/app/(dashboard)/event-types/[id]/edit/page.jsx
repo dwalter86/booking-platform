@@ -54,14 +54,13 @@ export default async function EventTypeEditPage({ params, searchParams }) {
 
       {/* ── Event type details ── */}
       <div className="card mb-4">
-        <div className="card-header d-flex align-items-center justify-content-between" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
+        <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
           <div>
             <h3 className="card-title mb-1" style={{ color: '#fff' }}>Event type details</h3>
             <p className="card-subtitle mb-0" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
               Public booking URL: /book/{asValue(eventType.slug)}
             </p>
           </div>
-          <DeleteEventTypeButton eventTypeId={eventType.id} resourceId={eventType.resource_id} />
         </div>
         <div className="card-body">
           <EventTypeForm
@@ -70,6 +69,12 @@ export default async function EventTypeEditPage({ params, searchParams }) {
             eventType={eventType}
             subscription={subscription}
             submitLabel="Save changes"
+            footerAction={
+              <DeleteEventTypeButton
+                eventTypeId={eventType.id}
+                resourceId={eventType.resource_id}
+              />
+            }
           />
         </div>
       </div>

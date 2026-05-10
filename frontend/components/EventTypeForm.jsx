@@ -19,8 +19,9 @@ function asValue(value, fallback = '') {
   return value === null || value === undefined ? fallback : String(value);
 }
 
-export default function EventTypeForm({ action, eventType, resourceId, submitLabel }) {
+export default function EventTypeForm({ action, eventType, resourceId, submitLabel, subscription, footerAction }) {
   const [formType, setFormType] = useState(asValue(eventType?.booking_form_type, 'classic'));
+  const isSolo = subscription?.plan_code === 'solo';
 
   return (
     <form action={action} method="post">
@@ -85,18 +86,30 @@ export default function EventTypeForm({ action, eventType, resourceId, submitLab
         {/* Booking mode */}
         <div className="col-md-4">
           <label className="form-label">Booking mode</label>
-          <select
-            className="form-select"
-            name="booking_mode"
-            defaultValue={asValue(eventType?.booking_mode, 'free')}
-          >
-            {BOOKING_MODE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <div className="form-text">
-            {BOOKING_MODE_OPTIONS.find(o => o.value === (eventType?.booking_mode || 'free'))?.description}
-          </div>
+          {isSolo ? (
+            <>
+              <input type="hidden" name="booking_mode" value="slots" />
+              <div className="form-control-plaintext text-secondary">Slots</div>
+              <div className="form-text">
+                <a href="/plans">Upgrade to Business</a> to unlock Free and Hybrid booking modes.
+              </div>
+            </>
+          ) : (
+            <>
+              <select
+                className="form-select"
+                name="booking_mode"
+                defaultValue={asValue(eventType?.booking_mode, 'slots')}
+              >
+                {BOOKING_MODE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <div className="form-text">
+                {BOOKING_MODE_OPTIONS.find(o => o.value === (eventType?.booking_mode || 'slots'))?.description}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Status */}
@@ -238,8 +251,9 @@ export default function EventTypeForm({ action, eventType, resourceId, submitLab
         </div>
 
         {/* Submit */}
-        <div className="col-12">
+        <div className="col-12 d-flex justify-content-between align-items-center">
           <button className="btn btn-primary" type="submit">{submitLabel || 'Save'}</button>
+          {footerAction && <div>{footerAction}</div>}
         </div>
 
       </div>
