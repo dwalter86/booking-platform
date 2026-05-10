@@ -279,7 +279,9 @@ export default function BookingFormClassic({
   const selectedResource = resources[0] || null;
   const resourceId = selectedResource?.id || '';
 
-  const bookingMode = selectedResource?.booking_mode || 'free';
+  const bookingMode = selectedResource?.booking_mode === 'slots'
+    ? 'availability_only'
+    : selectedResource?.booking_mode || 'free';
   const maxHours = selectedResource?.max_booking_duration_hours
     ? Number(selectedResource.max_booking_duration_hours)
     : null;
@@ -353,7 +355,7 @@ export default function BookingFormClassic({
     const to = localDateStr(addDays(new Date(), 60));
 
     setCalLoading(true);
-    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}`, {
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}&event_type_id=${encodeURIComponent(selectedResource?.event_type_id || '')}`, {
       cache: 'no-store'
     })
       .then(r => r.json())
@@ -380,7 +382,7 @@ export default function BookingFormClassic({
     setSlotsError('');
     setSelectedSlot(null);
 
-    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}`, {
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}&event_type_id=${encodeURIComponent(selectedResource?.event_type_id || '')}`, {
       cache: 'no-store'
     })
       .then(r => r.json())
@@ -518,6 +520,7 @@ export default function BookingFormClassic({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resource_id: resourceId,
+          event_type_id: selectedResource?.event_type_id || undefined,
           customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           customer_email: email.trim(),
           customer_phone: phone.trim() || undefined,

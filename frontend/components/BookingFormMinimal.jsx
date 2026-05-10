@@ -113,21 +113,23 @@ export default function BookingFormMinimal({ resources = [], apiError = '', init
   const [bookerPhone, setBookerPhone] = useState('');
 
   const selectedResource = useMemo(() => resources.find(r => r.id === resourceId) || null, [resources, resourceId]);
-  const bookingMode = selectedResource?.booking_mode || 'free';
+  const bookingMode = selectedResource?.booking_mode === 'slots'
+    ? 'availability_only'
+    : selectedResource?.booking_mode || 'free';
   const maxHours = selectedResource?.max_booking_duration_hours ? Number(selectedResource.max_booking_duration_hours) : null;
 
   useEffect(() => {
     if (!resourceId || !selectedResource?.has_rules) { setClosedDates(new Set()); setFullDates(new Set()); return; }
     const from = localDateStr(new Date()); const to = localDateStr(addDays(new Date(), 60));
     setCalLoading(true);
-    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}`, { cache: 'no-store' })
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}&event_type_id=${encodeURIComponent(selectedResource?.event_type_id || '')}`, { cache: 'no-store' })
       .then(r => r.json()).then(data => { const closed = new Set(); const full = new Set(); for (const d of data?.per_day || []) { if (!d.is_open) closed.add(d.date); else if (d.available_slots === 0) full.add(d.date); } setClosedDates(closed); setFullDates(full); }).catch(() => {}).finally(() => setCalLoading(false));
   }, [resourceId]);
 
   useEffect(() => {
     if (step !== 2 || !resourceId || !selectedDate || bookingMode === 'free') { setSlots([]); return; }
     setSlotsLoading(true); setSlotsError(''); setSelectedSlot(null);
-    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}`, { cache: 'no-store' })
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}&event_type_id=${encodeURIComponent(selectedResource?.event_type_id || '')}`, { cache: 'no-store' })
       .then(r => r.json()).then(data => setSlots(data?.slots || [])).catch(() => setSlotsError('Unable to load slots.')).finally(() => setSlotsLoading(false));
   }, [step, resourceId, selectedDate, bookingMode]);
 
@@ -162,7 +164,25 @@ export default function BookingFormMinimal({ resources = [], apiError = '', init
       startAt = selectedSlot.start_at; endAt = selectedSlot.end_at;
     }
     try {
-      const r = await fetch('/api/public-bookings/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resource_id: resourceId, customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(), customer_email: email.trim(), customer_phone: phone.trim() || undefined, party_size: partySize, notes: notes.trim() || undefined, start_at: startAt, end_at: endAt, draft_token: currentDraftToken || undefined, meeting_type: meetingType || undefined, location_id: locationId || undefined, booker_phone: bookerPhone || undefined }) });
+      const r = await fetch('/api/public-bookings/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource_id:    resourceId,
+          event_type_id:  selectedResource?.event_type_id || undefined,
+          customer_name:  `${firstName.trim()} ${lastName.trim()}`.trim(),
+          customer_email: email.trim(),
+          customer_phone: phone.trim() || undefined,
+          party_size:     partySize,
+          notes:          notes.trim() || undefined,
+          start_at:       startAt,
+          end_at:         endAt,
+          draft_token:    currentDraftToken || undefined,
+          meeting_type:   meetingType || undefined,
+          location_id:    locationId || undefined,
+          booker_phone:   bookerPhone || undefined,
+        }),
+      });
       const data = await r.json();
       if (!r.ok) { setSubmitError(r.status === 409 ? 'This slot was just taken — please choose another time.' : data?.error || 'Unable to submit.'); if (r.status === 409) setSelectedSlot(null); return; }
       setSubmitSuccess(true); window.history.replaceState({}, '', window.location.pathname);

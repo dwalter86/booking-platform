@@ -10,21 +10,20 @@ function getTenantSubdomain() {
   return host.split(':')[0].split('.')[0];
 }
 
-async function getResources(subdomain) {
+async function getEventTypes(subdomain) {
   try {
-    const response = await fetch('http://127.0.0.1:3001/api/public-bookings/resources', {
+    const response = await fetch('http://127.0.0.1:3001/api/public-bookings/event-types', {
       headers: { 'x-tenant-subdomain': subdomain },
       cache: 'no-store'
     });
-    if (!response.ok) return { resources: [], tenant: null, error: 'Unable to load resources.' };
+    if (!response.ok) return { eventTypes: [], tenant: null, error: 'Unable to load booking options.' };
     const data = await response.json();
-    return { resources: data.resources || [], tenant: data.tenant || null, error: '' };
+    return { eventTypes: data.event_types || [], tenant: data.tenant || null, error: '' };
   } catch {
-    return { resources: [], tenant: null, error: 'Booking API unavailable.' };
+    return { eventTypes: [], tenant: null, error: 'Booking API unavailable.' };
   }
 }
 
-// Shared tenant header — same as all /book/[slug] pages
 function TenantHeader({ tenant, tenantLogoUrl, tenantBrandColour }) {
   return (
     <>
@@ -47,9 +46,9 @@ function TenantHeader({ tenant, tenantLogoUrl, tenantBrandColour }) {
 
 export default async function PublicBookingIndexPage() {
   const subdomain = getTenantSubdomain();
-  const { resources, tenant, error } = await getResources(subdomain);
+  const { eventTypes, tenant, error } = await getEventTypes(subdomain);
 
-  const tenantLogoUrl = tenant?.logo_url || '';
+  const tenantLogoUrl     = tenant?.logo_url || '';
   const tenantBrandColour = tenant?.brand_colour || '';
 
   // Booking disabled
@@ -73,7 +72,7 @@ export default async function PublicBookingIndexPage() {
   }
 
   // API error
-  if (error && resources.length === 0) {
+  if (error && eventTypes.length === 0) {
     return (
       <div className="page">
         <div className="container-xl py-4">
@@ -87,12 +86,28 @@ export default async function PublicBookingIndexPage() {
     );
   }
 
-  // Single resource — redirect straight to its booking page
-  if (resources.length === 1) {
-    redirect(`/book/${resources[0].slug}`);
+  // No event types configured
+  if (eventTypes.length === 0) {
+    return (
+      <div className="page">
+        <div className="container-xl py-4">
+          <TenantHeader tenant={tenant} tenantLogoUrl={tenantLogoUrl} tenantBrandColour={tenantBrandColour} />
+          <div className="card">
+            <div className="card-body text-center py-5">
+              <p className="text-muted">No booking options are currently available.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Multiple resources — show picker
+  // Single event type — redirect straight to it
+  if (eventTypes.length === 1) {
+    redirect(`/book/${eventTypes[0].slug}`);
+  }
+
+  // Multiple event types — show picker
   return (
     <div className="page">
       <div className="container-xl py-4">
@@ -101,18 +116,22 @@ export default async function PublicBookingIndexPage() {
           <div className="card-body">
             <p className="text-muted mb-4">Select what you'd like to book:</p>
             <div className="row g-3">
-              {resources.map(r => (
-                <div key={r.id} className="col-md-6">
-                  <a href={`/book/${r.slug}`} className="card card-link h-100" style={{ textDecoration: 'none' }}>
+              {eventTypes.map(et => (
+                <div key={et.id} className="col-md-6">
+                  <a
+                    href={`/book/${et.slug}`}
+                    className="card card-link h-100"
+                    style={{ textDecoration: 'none' }}
+                  >
                     <div className="card-body">
-                      <h4 className="card-title">{r.name}</h4>
-                      {r.description && (
-                        <p className="text-muted small mb-2">{r.description}</p>
+                      <h4 className="card-title">{et.name}</h4>
+                      {et.description && (
+                        <p className="text-muted small mb-2">{et.description}</p>
                       )}
                       <div className="d-flex gap-3 mt-auto" style={{ fontSize: 12, color: '#868e96' }}>
-                        <span>Capacity: {r.capacity}</span>
-                        {r.max_booking_duration_hours && (
-                          <span>Max: {Number(r.max_booking_duration_hours)}h</span>
+                        <span>{et.duration_minutes} min</span>
+                        {et.resource_name && (
+                          <span>{et.resource_name}</span>
                         )}
                       </div>
                     </div>

@@ -5,6 +5,7 @@ import { config } from '../../../../lib/config';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const resourceId = searchParams.get('resource_id') || '';
+  const eventTypeId = searchParams.get('event_type_id') || '';
   const from = searchParams.get('from') || '';
   const to = searchParams.get('to') || '';
 
@@ -16,7 +17,7 @@ export async function GET(request) {
 
   try {
     const upstream = await fetch(
-      `${config.apiBaseUrl}/api/availability?resource_id=${encodeURIComponent(resourceId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      `${config.apiBaseUrl}/api/availability?resource_id=${encodeURIComponent(resourceId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${eventTypeId ? `&event_type_id=${encodeURIComponent(eventTypeId)}` : ''}`,
       {
         headers: {
           'Content-Type': 'application/json',

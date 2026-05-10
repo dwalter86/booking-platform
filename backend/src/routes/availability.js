@@ -14,6 +14,7 @@ router.get('/', async (req, res, next) => {
     if (!req.tenant) throw new AppError(400, 'Unable to resolve tenant from subdomain/header.');
 
     const resourceId = String(req.query.resource_id || '').trim();
+    const eventTypeId = String(req.query.event_type_id || '').trim() || null;
     const fromRaw    = String(req.query.from || '').trim();
     const toRaw      = String(req.query.to || '').trim();
 
@@ -45,6 +46,19 @@ router.get('/', async (req, res, next) => {
       const resource = resourceResult.rows[0];
 
       const timezone = resource.timezone || 'UTC';
+
+      // Load event type duration if provided
+      let eventTypeDuration = null;
+      if (eventTypeId) {
+        const etResult = await client.query(
+          `SELECT duration_minutes FROM public.event_types
+            WHERE id = $1 AND tenant_id = $2`,
+          [eventTypeId, req.tenant.id]
+        );
+        if (etResult.rows[0]) {
+          eventTypeDuration = etResult.rows[0].duration_minutes;
+        }
+      }
 
       // 2. Load availability rules for this resource
       const rulesResult = await client.query(
@@ -94,7 +108,9 @@ router.get('/', async (req, res, next) => {
       const maxHours = resource.max_booking_duration_hours
         ? Number(resource.max_booking_duration_hours)
         : null;
-      const defaultSlotDuration = maxHours ? Math.round(maxHours * 60) : 60;
+      const defaultSlotDuration = eventTypeDuration
+        ? Number(eventTypeDuration)
+        : maxHours ? Math.round(maxHours * 60) : 60;
 
       const { slots, per_day } = generateAvailability({
         resourceId,

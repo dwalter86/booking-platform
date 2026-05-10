@@ -126,6 +126,90 @@ router.get('/resources', resolveTenant, async (req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /event-types  — list active event types with parent resource for public booking
+// ---------------------------------------------------------------------------
+
+router.get('/event-types', resolveTenant, async (req, res, next) => {
+  try {
+    if (!req.tenant) throw new AppError(400, 'Unable to resolve tenant from subdomain/header.');
+
+    const result = await withTransaction(async (client) => {
+      await client.query('SELECT app.set_current_tenant($1)', [req.tenant.id]);
+
+      return await client.query(
+        `SELECT
+           et.id,
+           et.name,
+           et.slug,
+           et.description,
+           et.duration_minutes,
+           et.booking_form_type,
+           et.booking_mode,
+           et.auto_confirm,
+           et.max_advance_booking_days,
+           et.min_notice_hours,
+           et.buffer_before_minutes,
+           et.buffer_after_minutes,
+           et.booking_confirmation_message,
+           et.public_booking_enabled,
+           et.resource_id,
+           r.name        AS resource_name,
+           r.timezone    AS resource_timezone,
+           r.capacity    AS resource_capacity,
+           r.is_active   AS resource_is_active,
+           EXISTS (
+             SELECT 1 FROM availability_rules ar
+             WHERE ar.resource_id = et.resource_id
+               AND ar.is_open = true
+           ) AS has_rules
+         FROM public.event_types et
+         JOIN public.resources r ON r.id = et.resource_id
+         WHERE et.tenant_id = $1
+           AND et.status = 'active'
+           AND et.public_booking_enabled = true
+           AND r.is_active = true
+           AND r.archived_at IS NULL
+         ORDER BY et.created_at ASC`,
+        [req.tenant.id]
+      );
+    });
+
+    const brandingResult = await withTransaction(async (client) => {
+      await client.query('SELECT app.set_current_tenant($1)', [req.tenant.id]);
+      return client.query(
+        `SELECT pf.is_enabled
+           FROM public.plan_features pf
+           JOIN public.tenant_subscriptions ts ON ts.plan_id = pf.plan_id
+          WHERE ts.tenant_id = $1
+            AND pf.feature_key = 'remove_availio_branding'
+            AND ts.status IN ('trial', 'active', 'grace')
+          ORDER BY ts.created_at DESC
+          LIMIT 1`,
+        [req.tenant.id]
+      );
+    });
+    const removeAvailoBranding = brandingResult.rows[0]?.is_enabled ?? false;
+
+    res.json({
+      tenant: {
+        id:                           req.tenant.id,
+        name:                         req.tenant.name,
+        slug:                         req.tenant.slug,
+        subdomain:                    req.tenant.subdomain,
+        public_booking_enabled:       req.tenant.public_booking_enabled,
+        logo_url:                     req.tenant.logo_url,
+        brand_colour:                 req.tenant.brand_colour,
+        booking_confirmation_message: req.tenant.booking_confirmation_message,
+        remove_availio_branding:      removeAvailoBranding,
+      },
+      event_types: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /draft  — create or update a booking draft, return token
 // ---------------------------------------------------------------------------
 
@@ -263,6 +347,7 @@ router.post('/request', publicBookingLimiter, resolveTenant, async (req, res, ne
     if (!req.tenant) throw new AppError(400, 'Unable to resolve tenant from subdomain/header.');
 
     const resourceId  = String(req.body?.resource_id || '').trim();
+    const eventTypeId   = String(req.body?.event_type_id || '').trim() || null;
     const customerName  = String(req.body?.customer_name || '').trim();
     const customerEmail = String(req.body?.customer_email || '').trim().toLowerCase();
     const customerPhone = String(req.body?.customer_phone || '').trim();
@@ -364,28 +449,38 @@ router.post('/request', publicBookingLimiter, resolveTenant, async (req, res, ne
 
       const inserted = await client.query(
         `INSERT INTO bookings (
-           tenant_id, resource_id, status, start_at, end_at,
+           tenant_id, resource_id, event_type_id, status, start_at, end_at,
            party_size, customer_name, customer_email, customer_phone,
            notes, source, created_at, updated_at,
-         meeting_type, location_id, booker_phone
+           meeting_type, location_id, booker_phone
          ) VALUES (
-           $1, $2, 'provisional', $3, $4, $5, $6, $7, $8, $9, 'public', NOW(), NOW(),
-    $10, $11, $12
+           $1, $2, $3, 'provisional', $4, $5, $6, $7, $8, $9, $10, 'public', NOW(), NOW(),
+           $11, $12, $13
          )
-         RETURNING id, tenant_id, resource_id, status, start_at, end_at,
+         RETURNING id, tenant_id, resource_id, event_type_id, status, start_at, end_at,
                    party_size, customer_name, customer_email, customer_phone,
                    notes, source, created_at, updated_at`,
         [
-          req.tenant.id, resource.id,
+          req.tenant.id, resource.id, eventTypeId,
           startAt.toISOString(), endAt.toISOString(),
           partySize, customerName, customerEmail,
-          customerPhone || null, notes || null
+          customerPhone || null, notes || null,
+          meetingType || null, locationId || null, bookerPhone || null
         ]
       );
 
-      // Auto-confirm if enabled on this resource
+      // Auto-confirm — prefer event type setting when available, fall back to resource
+      let autoConfirm = resource.auto_confirm;
+      if (eventTypeId) {
+        const etResult = await client.query(
+          `SELECT auto_confirm FROM public.event_types WHERE id = $1 AND tenant_id = $2`,
+          [eventTypeId, req.tenant.id]
+        );
+        if (etResult.rowCount > 0) autoConfirm = etResult.rows[0].auto_confirm;
+      }
+
       let finalBooking = inserted.rows[0];
-      if (resource.auto_confirm) {
+      if (autoConfirm) {
         const confirmed = await client.query(
           `UPDATE bookings
               SET status       = 'confirmed',

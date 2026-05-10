@@ -7,10 +7,6 @@ import BookingFormCards from '../../../components/BookingFormCards';
 
 export const dynamic = 'force-dynamic';
 
-// ---------------------------------------------------------------------------
-// Server helpers
-// ---------------------------------------------------------------------------
-
 function PoweredByAvailio() {
   return (
     <div style={{ textAlign: 'center', marginTop: 32, marginBottom: 8 }}>
@@ -51,17 +47,17 @@ function getTenantSubdomain() {
   return host.split(':')[0].split('.')[0];
 }
 
-async function getResources(subdomain) {
+async function getEventTypes(subdomain) {
   try {
-    const response = await fetch('http://127.0.0.1:3001/api/public-bookings/resources', {
+    const response = await fetch('http://127.0.0.1:3001/api/public-bookings/event-types', {
       headers: { 'x-tenant-subdomain': subdomain },
       cache: 'no-store'
     });
-    if (!response.ok) return { resources: [], tenant: null, error: 'Unable to load resources.' };
+    if (!response.ok) return { eventTypes: [], tenant: null, error: 'Unable to load booking options.' };
     const data = await response.json();
-    return { resources: data.resources || [], tenant: data.tenant || null, error: '' };
+    return { eventTypes: data.event_types || [], tenant: data.tenant || null, error: '' };
   } catch {
-    return { resources: [], tenant: null, error: 'Booking API unavailable.' };
+    return { eventTypes: [], tenant: null, error: 'Booking API unavailable.' };
   }
 }
 
@@ -81,17 +77,13 @@ async function getDraft(subdomain, token) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
-export default async function PublicBookingResourcePage({ params, searchParams }) {
-  const subdomain = getTenantSubdomain();
-  const slug = params?.slug || '';
+export default async function PublicBookingSlugPage({ params, searchParams }) {
+  const subdomain  = getTenantSubdomain();
+  const slug       = params?.slug || '';
   const draftToken = searchParams?.draft || null;
 
-  const [{ resources, tenant, error }, { draft, draftExpired }] = await Promise.all([
-    getResources(subdomain),
+  const [{ eventTypes, tenant, error }, { draft, draftExpired }] = await Promise.all([
+    getEventTypes(subdomain),
     getDraft(subdomain, draftToken),
   ]);
 
@@ -118,37 +110,56 @@ export default async function PublicBookingResourcePage({ params, searchParams }
     );
   }
 
-  // Find the specific resource by slug
-  const resource = resources.find(r => r.slug === slug);
-  if (!resource) notFound();
+  // Find event type by slug
+  const eventType = eventTypes.find(et => et.slug === slug);
+  if (!eventType) notFound();
 
-  // Pass only this resource to the form components
-  // (they still accept an array but will have exactly one entry)
-  const resourcesForForm = [resource];
+  const tenantLogoUrl        = tenant?.logo_url || '';
+  const tenantBrandColour    = tenant?.brand_colour || '';
+  const removeAvailoBranding = tenant?.remove_availio_branding ?? false;
+  const formType             = eventType.booking_form_type || 'classic';
 
-  const tenantLogoUrl          = tenant?.logo_url || '';
-  const tenantBrandColour      = tenant?.brand_colour || '';
-  const removeAvailoBranding   = tenant?.remove_availio_branding ?? false;
-  const formType               = resource.booking_form_type || 'classic';
+  // Build a resource-shaped object for the form components from the
+  // event type + embedded resource fields
+  const resourceForForm = {
+    id:                        eventType.resource_id,
+    name:                      eventType.resource_name,
+    timezone:                  eventType.resource_timezone,
+    capacity:                  eventType.resource_capacity,
+    booking_mode:              eventType.booking_mode,
+    duration_minutes:          eventType.duration_minutes,
+    min_notice_hours:          eventType.min_notice_hours,
+    max_advance_booking_days:  eventType.max_advance_booking_days,
+    buffer_before_minutes:     eventType.buffer_before_minutes,
+    buffer_after_minutes:      eventType.buffer_after_minutes,
+    has_rules:                 eventType.has_rules,
+    slug:                      eventType.slug,
+    booking_form_type:         eventType.booking_form_type,
+    auto_confirm:              eventType.auto_confirm,
+    // Pass event type id so forms can include it in booking submission
+    event_type_id:             eventType.id,
+    event_type_name:           eventType.name,
+  };
 
   const sharedProps = {
-    resources: resourcesForForm,
-    apiError: error,
-    initialDraft: draft,
+    resources:           [resourceForForm],
+    apiError:            error,
+    initialDraft:        draft,
     draftExpired,
     draftToken,
-    confirmationMessage: tenant?.booking_confirmation_message || '',
+    confirmationMessage: eventType.booking_confirmation_message
+                           || tenant?.booking_confirmation_message
+                           || '',
     tenantLogoUrl,
     tenantBrandColour,
     removeAvailoBranding,
   };
 
-  // Non-classic forms — full width, no Tabler card wrapper
+  // Non-classic forms — full width, no card wrapper
   if (formType !== 'classic') {
     return (
       <div className="page">
         <div className="container-xl py-4">
-          {/* Tenant header */}
           {(tenantLogoUrl || tenant?.name) && (
             <div className="d-flex align-items-center gap-3 mb-4 px-2">
               {tenantLogoUrl && (
@@ -159,18 +170,14 @@ export default async function PublicBookingResourcePage({ params, searchParams }
               )}
             </div>
           )}
-
           {tenantBrandColour && (
             <div style={{ height: 3, background: tenantBrandColour, borderRadius: 2, marginBottom: 24 }} />
           )}
-
-          {/* Back link if tenant has multiple resources */}
-          {resources.length > 1 && (
+          {eventTypes.length > 1 && (
             <a href="/book" style={{ fontSize: 13, color: '#868e96', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 20, textDecoration: 'none' }}>
-              ← All resources
+              ← All options
             </a>
           )}
-
           {formType === 'minimal' && <BookingFormMinimal {...sharedProps} />}
           {formType === 'split'   && <BookingFormSplit   {...sharedProps} />}
           {formType === 'cards'   && <BookingFormCards   {...sharedProps} />}
@@ -180,11 +187,10 @@ export default async function PublicBookingResourcePage({ params, searchParams }
     );
   }
 
-  // Classic — aligned with new form layout
+  // Classic
   return (
     <div className="page">
       <div className="container-xl py-4">
-        {/* Tenant header — same as new forms */}
         {(tenantLogoUrl || tenant?.name) && (
           <div className="d-flex align-items-center gap-3 mb-4 px-2">
             {tenantLogoUrl && (
@@ -195,18 +201,14 @@ export default async function PublicBookingResourcePage({ params, searchParams }
             )}
           </div>
         )}
-
         {tenantBrandColour && (
           <div style={{ height: 3, background: tenantBrandColour, borderRadius: 2, marginBottom: 24 }} />
         )}
-
-        {/* Back link if tenant has multiple resources */}
-        {resources.length > 1 && (
+        {eventTypes.length > 1 && (
           <a href="/book" style={{ fontSize: 13, color: '#868e96', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 20, textDecoration: 'none' }}>
-            ← All resources
+            ← All options
           </a>
         )}
-
         <div className="card">
           <div className="card-body">
             <BookingFormClassic {...sharedProps} />

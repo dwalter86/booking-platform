@@ -235,14 +235,16 @@ export default function BookingFormSplit({
   const [currentDraftToken] = useState(draftToken || null);
 
   const selectedResource = useMemo(() => resources.find(r => r.id === resourceId) || null, [resources, resourceId]);
-  const bookingMode = selectedResource?.booking_mode || 'free';
+  const bookingMode = selectedResource?.booking_mode === 'slots'
+    ? 'availability_only'
+    : selectedResource?.booking_mode || 'free';
   const maxHours = selectedResource?.max_booking_duration_hours ? Number(selectedResource.max_booking_duration_hours) : null;
 
   useEffect(() => {
     if (!resourceId || !selectedResource?.has_rules) { setClosedDates(new Set()); setFullDates(new Set()); return; }
     const from = localDateStr(new Date()); const to = localDateStr(addDays(new Date(), 60));
     setCalLoading(true);
-    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}`, { cache: 'no-store' })
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${from}&to=${to}&event_type_id=${encodeURIComponent(selectedResource?.event_type_id || '')}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         const closed = new Set(); const full = new Set();
@@ -254,7 +256,7 @@ export default function BookingFormSplit({
   useEffect(() => {
     if (!resourceId || !selectedDate || bookingMode === 'free') { setSlots([]); return; }
     setSlotsLoading(true); setSlotsError(''); setSelectedSlot(null);
-    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}`, { cache: 'no-store' })
+    fetch(`/api/calendar/public-availability?resource_id=${encodeURIComponent(resourceId)}&from=${selectedDate}&to=${selectedDate}&event_type_id=${encodeURIComponent(selectedResource?.event_type_id || '')}`, { cache: 'no-store' })
       .then(r => r.json()).then(data => setSlots(data?.slots || []))
       .catch(() => setSlotsError('Unable to load slots.')).finally(() => setSlotsLoading(false));
   }, [resourceId, selectedDate, bookingMode]);
@@ -297,6 +299,7 @@ export default function BookingFormSplit({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resource_id: resourceId,
+          event_type_id: selectedResource?.event_type_id || undefined,
           customer_name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
           customer_email: form.email.trim(),
           customer_phone: form.phone.trim() || undefined,
