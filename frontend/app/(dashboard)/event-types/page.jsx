@@ -127,7 +127,7 @@ export default async function EventTypesPage({ searchParams }) {
                         <td>
                           <div className="d-flex gap-1 flex-wrap justify-content-end">
                             <Link
-                              href={`/event-types/${et.id}/edit`}
+                              href={`/event-types/${et.id}/edit?return_to=/event-types`}
                               className="btn btn-sm btn-outline-primary"
                             >
                               Edit

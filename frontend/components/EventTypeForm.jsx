@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ResourceMeetingTypes from './ResourceMeetingTypes';
 
 const BOOKING_FORM_OPTIONS = [
   { value: 'classic', label: 'Classic', description: 'Two-step form with calendar and contact details.' },
@@ -19,7 +20,7 @@ function asValue(value, fallback = '') {
   return value === null || value === undefined ? fallback : String(value);
 }
 
-export default function EventTypeForm({ action, eventType, resourceId, submitLabel, subscription, footerAction }) {
+export default function EventTypeForm({ action, eventType, resourceId, submitLabel, subscription, footerAction, returnTo }) {
   const [formType, setFormType] = useState(asValue(eventType?.booking_form_type, 'classic'));
   const isSolo = subscription?.plan_code === 'solo';
 
@@ -27,6 +28,7 @@ export default function EventTypeForm({ action, eventType, resourceId, submitLab
     <form action={action} method="post">
       {eventType?.id && <input type="hidden" name="id" value={eventType.id} />}
       <input type="hidden" name="resource_id" value={resourceId} />
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
 
       <div className="row g-3">
 
@@ -183,6 +185,13 @@ export default function EventTypeForm({ action, eventType, resourceId, submitLab
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Meeting types */}
+        <div className="col-12">
+          <label className="form-label">Meeting types</label>
+          <div className="form-text mb-2">How clients can meet with you for this event type.</div>
+          <ResourceMeetingTypes resourceId={resourceId} />
         </div>
 
         {/* Confirmation message */}

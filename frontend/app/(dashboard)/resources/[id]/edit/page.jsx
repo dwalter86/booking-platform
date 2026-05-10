@@ -222,7 +222,7 @@ export default async function ResourceEditPage({ params, searchParams }) {
                   </td>
                   <td>
                     <Link
-                      href={`/event-types/${et.id}/edit`}
+                      href={`/event-types/${et.id}/edit?return_to=/resources/${resource.id}/edit`}
                       className="btn btn-sm btn-outline-primary"
                     >
                       Edit

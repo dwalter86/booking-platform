@@ -3,7 +3,7 @@ import LayoutShell from '../../../../../components/LayoutShell';
 import { apiFetch, requireAuth } from '../../../../../lib/auth';
 import EventTypeForm from '../../../../../components/EventTypeForm';
 import DeleteEventTypeButton from '../../../../../components/DeleteEventTypeButton';
-import ResourceMeetingTypes from '../../../../../components/ResourceMeetingTypes';
+// ResourceMeetingTypes now rendered inside EventTypeForm
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +32,9 @@ export default async function EventTypeEditPage({ params, searchParams }) {
   const eventType    = await eventTypeRes.json();
   const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
 
-  const success = searchParams?.success || '';
-  const error   = searchParams?.error   || '';
+  const success  = searchParams?.success   || '';
+  const error    = searchParams?.error     || '';
+  const returnTo = searchParams?.return_to || `/resources/${eventType.resource_id}/edit`;
 
   const resourcesRes = await apiFetch('/api/resources');
   const resources    = resourcesRes.ok ? await resourcesRes.json() : [];
@@ -41,9 +42,13 @@ export default async function EventTypeEditPage({ params, searchParams }) {
     ? resources.find(r => r.id === eventType.resource_id) || null
     : null;
 
+  const backLabel = returnTo.startsWith('/event-types')
+    ? 'Event Types'
+    : resource?.name || 'Resource';
+
   const backButton = (
-    <Link href={`/resources/${eventType.resource_id}/edit`} className="btn btn-sm btn-outline-secondary">
-      ← {resource?.name || 'Resource'}
+    <Link href={returnTo} className="btn btn-sm btn-outline-secondary">
+      ← {backLabel}
     </Link>
   );
 
@@ -69,6 +74,7 @@ export default async function EventTypeEditPage({ params, searchParams }) {
             eventType={eventType}
             subscription={subscription}
             submitLabel="Save changes"
+            returnTo={returnTo}
             footerAction={
               <DeleteEventTypeButton
                 eventTypeId={eventType.id}
@@ -79,20 +85,7 @@ export default async function EventTypeEditPage({ params, searchParams }) {
         </div>
       </div>
 
-      {/* ── Meeting types ── */}
-      <div className="card mb-4">
-        <div className="card-header" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
-          <div>
-            <h3 className="card-title mb-1" style={{ color: '#fff' }}>Meeting types</h3>
-            <p className="card-subtitle mb-0" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
-              How clients can meet with you for this event type.
-            </p>
-          </div>
-        </div>
-        <div className="card-body">
-          <ResourceMeetingTypes resourceId={eventType.resource_id} />
-        </div>
-      </div>
+      {/* Meeting types moved into EventTypeForm */}
 
     </LayoutShell>
   );
