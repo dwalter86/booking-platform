@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict cREH0sZMRq8s9Dd5IsinfFaJWOMfUJQ2kPSt4LpgC5Sue39wgsGM15UMIe7ffrh
+\restrict BsVOqkHskkqhKW181dRjGZh238c4RaFgeb42E2XxvFryN5P6MLWGqaHAbDtqwXo
 
 -- Dumped from database version 17.9 (Ubuntu 17.9-0ubuntu0.25.10.1)
 -- Dumped by pg_dump version 17.9 (Ubuntu 17.9-0ubuntu0.25.10.1)
@@ -1495,4 +1495,5 @@ CREATE POLICY users_tenant_isolation ON public.users USING ((tenant_id = app.cur
 -- PostgreSQL database dump complete
 --
 
-\unrestrict cREH0sZMRq8s9Dd5IsinfFaJWOMfUJQ2kPSt4LpgC5Sue39wgsGM15UMIe7ffrh
+\unrestrict BsVOqkHskkqhKW181dRjGZh238c4RaFgeb42E2XxvFryN5P6MLWGqaHAbDtqwXo
+
