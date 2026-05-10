@@ -9,6 +9,7 @@ import { apiFetch, requireAuth } from '../../../../../lib/auth';
 import DeleteResourceButton from '../../../../../components/DeleteResourceButton';
 import SlugInput from '../../../../../components/SlugInput';
 import ResourceMeetingTypes from '../../../../../components/ResourceMeetingTypes';
+import EventTypeForm from '../../../../../components/EventTypeForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,14 +58,16 @@ export default async function ResourceEditPage({ params, searchParams }) {
   }
 
   // Fetch availability data
-  const [rulesRes, exceptionsRes, subscriptionRes] = await Promise.all([
+  const [rulesRes, exceptionsRes, subscriptionRes, eventTypesRes] = await Promise.all([
     apiFetch(`/api/availability-rules?resource_id=${id}`),
     apiFetch(`/api/availability-exceptions?resource_id=${id}`),
     apiFetch('/api/plans/subscription'),
+    apiFetch(`/api/event-types?resource_id=${id}`),
   ]);
   const rules        = rulesRes.ok        ? await rulesRes.json()        : [];
   const exceptions   = exceptionsRes.ok   ? await exceptionsRes.json()   : [];
   const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
+  const eventTypes   = eventTypesRes.ok   ? await eventTypesRes.json()   : [];
   const isSolo       = subscription?.plan_code === 'solo';
 
   const success = searchParams?.success || '';
@@ -72,6 +75,12 @@ export default async function ResourceEditPage({ params, searchParams }) {
   const show    = searchParams?.show    || '';
   const editRuleId      = searchParams?.edit_rule      || '';
   const editExceptionId = searchParams?.edit_exception || '';
+  const editEventTypeId = searchParams?.edit_event_type || '';
+  const showAddEventType = searchParams?.show === 'add_event_type';
+
+  const editingEventType = editEventTypeId
+    ? (Array.isArray(eventTypes) ? eventTypes.find(e => e.id === editEventTypeId) || null : null)
+    : null;
 
   const editingRule      = editRuleId      ? (Array.isArray(rules)      ? rules.find(r => r.id === editRuleId)           || null : null) : null;
   const editingException = editExceptionId ? (Array.isArray(exceptions) ? exceptions.find(e => e.id === editExceptionId) || null : null) : null;
@@ -349,6 +358,121 @@ export default async function ResourceEditPage({ params, searchParams }) {
         </div>
         <div className="card-body">
           <ResourceMeetingTypes resourceId={resource.id} />
+        </div>
+      </div>
+
+      {/* ── Event Types ── */}
+      <div className="card mb-4">
+        <div className="card-header d-flex align-items-center justify-content-between" style={{ backgroundColor: '#1e2a78', color: '#fff' }}>
+          <div>
+            <h3 className="card-title mb-1" style={{ color: '#fff' }}>Event Types</h3>
+            <p className="card-subtitle mb-0" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+              Bookable formats for this resource — e.g. 30 min call, 60 min session.
+            </p>
+          </div>
+          {!showAddEventType && !editingEventType && (
+            <Link
+              href={`${returnBase}?show=add_event_type`}
+              className="btn btn-sm btn-outline-light"
+            >
+              Add event type
+            </Link>
+          )}
+        </div>
+        <div className="card-body">
+
+          {/* Add form */}
+          {showAddEventType && !editingEventType && (
+            <div className="mb-4">
+              <h4 className="mb-3">New event type</h4>
+              <EventTypeForm
+                action="/event-type-actions/create"
+                resourceId={resource.id}
+                submitLabel="Create event type"
+              />
+              <div className="mt-2">
+                <Link href={returnBase} className="btn btn-sm btn-outline-secondary">Cancel</Link>
+              </div>
+            </div>
+          )}
+
+          {/* Edit form */}
+          {editingEventType && (
+            <div className="mb-4">
+              <h4 className="mb-3">Edit — {editingEventType.name}</h4>
+              <EventTypeForm
+                action="/event-type-actions/update"
+                resourceId={resource.id}
+                eventType={editingEventType}
+                submitLabel="Save changes"
+              />
+              <div className="mt-2">
+                <Link href={returnBase} className="btn btn-sm btn-outline-secondary">Cancel</Link>
+              </div>
+            </div>
+          )}
+
+          {/* Event type list */}
+          {!showAddEventType && !editingEventType && (
+            Array.isArray(eventTypes) && eventTypes.length === 0 ? (
+              <p className="text-secondary mb-0">No event types yet. Click Add event type to create one.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-vcenter card-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Duration</th>
+                      <th>Mode</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(eventTypes) && eventTypes.map(et => (
+                      <tr key={et.id}>
+                        <td>
+                          <div>{et.name}</div>
+                          <div className="text-secondary small">{et.slug}</div>
+                        </td>
+                        <td>{et.duration_minutes} min</td>
+                        <td className="text-secondary small">{et.booking_mode}</td>
+                        <td>
+                          <span className={`badge ${et.status === 'active' ? 'bg-green-lt' : 'bg-red-lt'}`}>
+                            {et.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="d-flex gap-1 justify-content-end">
+                            <Link
+                              href={`${returnBase}?edit_event_type=${et.id}`}
+                              className="btn btn-sm btn-outline-primary"
+                            >
+                              Edit
+                            </Link>
+                            <form action="/event-type-actions/delete" method="post" style={{ display: 'inline' }}>
+                              <input type="hidden" name="id" value={et.id} />
+                              <input type="hidden" name="resource_id" value={resource.id} />
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                type="submit"
+                                onClick={e => {
+                                  if (!confirm('Delete this event type? This cannot be undone.')) e.preventDefault();
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+
         </div>
       </div>
 
