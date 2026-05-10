@@ -10,6 +10,7 @@ import DeleteResourceButton from '../../../../../components/DeleteResourceButton
 import SlugInput from '../../../../../components/SlugInput';
 import ResourceMeetingTypes from '../../../../../components/ResourceMeetingTypes';
 import EventTypeForm from '../../../../../components/EventTypeForm';
+import DeleteEventTypeButton from '../../../../../components/DeleteEventTypeButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -450,19 +451,7 @@ export default async function ResourceEditPage({ params, searchParams }) {
                             >
                               Edit
                             </Link>
-                            <form action="/event-type-actions/delete" method="post" style={{ display: 'inline' }}>
-                              <input type="hidden" name="id" value={et.id} />
-                              <input type="hidden" name="resource_id" value={resource.id} />
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                type="submit"
-                                onClick={e => {
-                                  if (!confirm('Delete this event type? This cannot be undone.')) e.preventDefault();
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </form>
+                            <DeleteEventTypeButton eventTypeId={et.id} resourceId={resource.id} />
                           </div>
                         </td>
                       </tr>
