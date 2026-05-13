@@ -15,31 +15,37 @@ function parseStatus(value) {
 async function getBookingWithResource(client, tenantId, bookingId) {
   const result = await client.query(
     `SELECT
-       b.id,
-       b.tenant_id,
-       b.resource_id,
-       r.name AS resource_name,
-       b.status,
-       b.start_at,
-       b.end_at,
-       b.party_size,
-       b.customer_name,
-       b.customer_email,
-       b.customer_phone,
-       b.notes,
-       b.source,
-       b.public_reference AS reference_code,
-       b.confirmed_at,
-       b.cancelled_at,
-       b.cancellation_reason,
-       b.created_by_user_id,
-       b.created_at,
-       b.updated_at
-     FROM public.bookings b
-     LEFT JOIN public.resources r
-       ON r.id = b.resource_id
-      AND r.tenant_id = b.tenant_id
-     WHERE b.tenant_id = $1
+         b.id,
+         b.tenant_id,
+         b.resource_id,
+         r.name AS resource_name,
+         b.event_type_id,
+         et.name AS event_type_name,
+         b.status,
+         b.start_at,
+         b.end_at,
+         b.party_size,
+         b.customer_name,
+         b.customer_email,
+         b.customer_phone,
+         b.notes,
+         b.source,
+         b.public_reference AS reference_code,
+         b.confirmed_at,
+         b.cancelled_at,
+         b.cancellation_reason,
+         b.created_by_user_id,
+         b.created_at,
+         b.updated_at,
+         COUNT(*) OVER() AS total_count
+       FROM public.bookings b
+       LEFT JOIN public.resources r
+         ON r.id = b.resource_id
+        AND r.tenant_id = b.tenant_id
+       LEFT JOIN public.event_types et
+         ON et.id = b.event_type_id
+        AND et.tenant_id = b.tenant_id
+       WHERE ${where.join(' AND ')}
        AND b.id = $2`,
     [tenantId, bookingId]
   );

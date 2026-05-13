@@ -1,5 +1,6 @@
 import LayoutShell from '../../../components/LayoutShell';
 import TodayHero from '../../../components/TodayHero';
+import ActivityTable from '../../../components/ActivityTable';
 import DataCard from '../../../components/DataCard';
 import FadeOut from '../../../components/FadeOut';
 import DashboardCalendarClient from '../../../components/DashboardCalendarClient';
@@ -345,50 +346,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="row row-deck row-cards">
-        <div className="col-12">
-          <DataCard
-            title="Recent bookings"
-            footer={<a href="/bookings">View all bookings →</a>}
-            headerStyle={{ backgroundColor: '#1e2a78', color: '#ffffff' }}
-          >
-            <div className="table-responsive">
-              <table className="table table-vcenter">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Booked</th>
-                    <th>Status</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.length === 0 ? (
-                    <tr><td colSpan="6" className="text-secondary">No bookings yet.</td></tr>
-                  ) : bookings.slice(0, 5).map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.customer_name || <span className="text-secondary">—</span>}</td>
-                      <td>{formatDateTime(row.created_at)}</td>
-                      <td>
-                        <span className={`badge ${badgeClass(row.status)}`}>
-                          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                        </span>
-                      </td>
-                      <td>{formatDateTime(row.start_at)}</td>
-                      <td>{formatDateTime(row.end_at)}</td>
-                      <td>
-                        <a href={`/bookings?booking_id=${row.id}`} className="btn btn-sm btn-outline-primary">View</a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </DataCard>
-        </div>
-      </div>
+      <ActivityTable initialBookings={bookings} totalCount={totalBookings} />
     </LayoutShell>
   );
 }
