@@ -25,6 +25,7 @@ import tenantLogoRoutes from './routes/tenant-logo.js';
 import locationRoutes from './routes/locations.js';
 import resourceMeetingTypeRoutes from './routes/resource-meeting-types.js';
 import eventTypeRoutes from './routes/event-types.js';
+import analyticsRoutes from './routes/analytics.js';
 
 const app = express();
 
@@ -77,6 +78,7 @@ app.use('/api/tenant/profile', tenantProfileRoutes);
 app.use('/api/tenant/logo', tenantLogoRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/event-types', eventTypeRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/resources', resourceMeetingTypeRoutes);
 
 app.use((req, res) => {

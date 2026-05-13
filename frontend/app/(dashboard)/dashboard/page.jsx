@@ -1,6 +1,7 @@
 import LayoutShell from '../../../components/LayoutShell';
 import TodayHero from '../../../components/TodayHero';
 import ActivityTable from '../../../components/ActivityTable';
+import UtilisationRings from '../../../components/UtilisationRings';
 import DataCard from '../../../components/DataCard';
 import FadeOut from '../../../components/FadeOut';
 import DashboardCalendarClient from '../../../components/DashboardCalendarClient';
@@ -312,6 +313,8 @@ export default async function DashboardPage() {
       </>
     }
     >
+      <UtilisationRings />
+
       <TodayHero
         tenantName={tenant?.display_name || null}
         nextBooking={nextBooking}
