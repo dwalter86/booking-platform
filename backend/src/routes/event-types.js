@@ -9,6 +9,7 @@ const router = Router();
 
 const VALID_FORM_TYPES = ['classic', 'minimal', 'split', 'cards'];
 const VALID_BOOKING_MODES = ['free', 'slots', 'hybrid'];
+const HEX_COLOUR_RE = /^#[0-9a-fA-F]{6}$/;
 
 // GET /api/event-types?resource_id=X
 router.get('/', requireAuth, asyncHandler(async (req, res) => {
@@ -93,6 +94,8 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
     );
     if (slugCheck.rowCount) throw new AppError(409, 'An event type with this slug already exists.');
 
+    const colour = HEX_COLOUR_RE.test(data.colour) ? data.colour : '#1e2a78';
+
     const result = await client.query(
       `INSERT INTO public.event_types (
          tenant_id, resource_id, name, slug, description,
@@ -100,14 +103,14 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
          auto_confirm, max_advance_booking_days, min_notice_hours,
          buffer_before_minutes, buffer_after_minutes,
          booking_confirmation_message, public_booking_enabled,
-         status, metadata
+         status, metadata, colour
        ) VALUES (
          $1, $2, $3, $4, $5,
          COALESCE($6, 60), $7, $8,
          COALESCE($9, false), $10, COALESCE($11, 0),
          COALESCE($12, 0), COALESCE($13, 0),
          $14, COALESCE($15, true),
-         COALESCE($16, 'active'), COALESCE($17::jsonb, '{}'::jsonb)
+         COALESCE($16, 'active'), COALESCE($17::jsonb, '{}'::jsonb), $18
        ) RETURNING *`,
       [
         req.auth.tenant_id,
@@ -126,7 +129,8 @@ router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
         data.booking_confirmation_message || null,
         data.public_booking_enabled ?? true,
         data.status || 'active',
-        JSON.stringify(data.metadata || {})
+        JSON.stringify(data.metadata || {}),
+        colour
       ]
     );
 
@@ -168,6 +172,8 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
       if (slugCheck.rowCount) throw new AppError(409, 'An event type with this slug already exists.');
     }
 
+    const colour = HEX_COLOUR_RE.test(data.colour) ? data.colour : (current.colour || '#1e2a78');
+
     const result = await client.query(
       `UPDATE public.event_types
           SET name                         = $2,
@@ -184,8 +190,9 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
               booking_confirmation_message = $13,
               public_booking_enabled       = $14,
               status                       = $15,
-              metadata                     = $16::jsonb
-        WHERE id = $1 AND tenant_id = $17
+              metadata                     = $16::jsonb,
+              colour                       = $17
+        WHERE id = $1 AND tenant_id = $18
       RETURNING *`,
       [
         req.params.id,
@@ -204,6 +211,7 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
         data.public_booking_enabled ?? true,
         data.status || 'active',
         JSON.stringify(data.metadata || {}),
+        colour,
         req.auth.tenant_id
       ]
     );

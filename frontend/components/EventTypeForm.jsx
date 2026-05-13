@@ -127,6 +127,20 @@ export default function EventTypeForm({ action, eventType, resourceId, submitLab
           </select>
         </div>
 
+        {/* Colour */}
+        <div className="col-md-4">
+          <label className="form-label">Colour</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input
+              type="color"
+              name="colour"
+              defaultValue={eventType?.colour || '#1e2a78'}
+              style={{ width: 40, height: 36, padding: 2, borderRadius: 6, border: '1px solid #dee2e6', cursor: 'pointer' }}
+            />
+            <span className="form-text mb-0">Shown as a colour tag on bookings and calendar events.</span>
+          </div>
+        </div>
+
         {/* Auto-confirm */}
         <div className="col-12">
           <label className="form-check">

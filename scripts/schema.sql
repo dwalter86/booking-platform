@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict BsVOqkHskkqhKW181dRjGZh238c4RaFgeb42E2XxvFryN5P6MLWGqaHAbDtqwXo
+\restrict 7zcC8EgPfU8LWWnOZLQOFZcm7HlHCx3YpuUsDONi6lvvrOIQoXmsKTKR3ltD0YK
 
 -- Dumped from database version 17.9 (Ubuntu 17.9-0ubuntu0.25.10.1)
 -- Dumped by pg_dump version 17.9 (Ubuntu 17.9-0ubuntu0.25.10.1)
@@ -309,6 +309,7 @@ CREATE TABLE public.event_types (
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
+    colour text DEFAULT '#1e2a78'::text NOT NULL,
     CONSTRAINT event_types_booking_form_type_check CHECK ((booking_form_type = ANY (ARRAY['classic'::text, 'minimal'::text, 'split'::text, 'cards'::text]))),
     CONSTRAINT event_types_booking_mode_check CHECK ((booking_mode = ANY (ARRAY['free'::text, 'slots'::text, 'hybrid'::text]))),
     CONSTRAINT event_types_status_check CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text])))
@@ -1495,5 +1496,5 @@ CREATE POLICY users_tenant_isolation ON public.users USING ((tenant_id = app.cur
 -- PostgreSQL database dump complete
 --
 
-\unrestrict BsVOqkHskkqhKW181dRjGZh238c4RaFgeb42E2XxvFryN5P6MLWGqaHAbDtqwXo
+\unrestrict 7zcC8EgPfU8LWWnOZLQOFZcm7HlHCx3YpuUsDONi6lvvrOIQoXmsKTKR3ltD0YK
 

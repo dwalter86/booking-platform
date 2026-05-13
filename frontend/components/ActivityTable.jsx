@@ -106,7 +106,7 @@ export default function ActivityTable({ initialBookings = [], totalCount = 0 }) 
                 </td>
               </tr>
             ) : filtered.map(row => {
-              const colour = stripeColour(row.event_type_id || row.resource_id);
+              const colour = row.event_type_colour || stripeColour(row.event_type_id || row.resource_id);
               return (
                 <tr key={row.id} style={{ borderBottom: '1px solid var(--av-line)', transition: 'background .12s' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--av-paper-2)'}

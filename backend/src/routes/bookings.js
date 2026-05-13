@@ -21,6 +21,7 @@ async function getBookingWithResource(client, tenantId, bookingId) {
          r.name AS resource_name,
          b.event_type_id,
          et.name AS event_type_name,
+         et.colour AS event_type_colour,
          b.status,
          b.start_at,
          b.end_at,
