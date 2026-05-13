@@ -1,4 +1,5 @@
 import LayoutShell from '../../../components/LayoutShell';
+import TodayHero from '../../../components/TodayHero';
 import DataCard from '../../../components/DataCard';
 import FadeOut from '../../../components/FadeOut';
 import DashboardCalendarClient from '../../../components/DashboardCalendarClient';
@@ -15,13 +16,15 @@ function badgeClass(status) {
 
 async function load() {
   await requireAuth();
-  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes, entitlementRes] = await Promise.all([
+  const now = new Date().toISOString();
+  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes, entitlementRes, nextBookingRes] = await Promise.all([
     apiFetch('/api/resources'),
     apiFetch('/api/bookings?per_page=5'),
     apiFetch('/api/tenant/profile'),
     apiFetch('/api/unavailability-blocks'),
     apiFetch('/api/plans/subscription'),
     apiFetch('/api/entitlement'),
+    apiFetch(`/api/bookings?status=confirmed&date_from=${now}&sort=start_asc&per_page=1`),
   ]);
 
   const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
@@ -46,10 +49,12 @@ async function load() {
   }
   const hasAnyRules = Object.values(allRulesByResource).some(r => r.length > 0);
 
-  const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
-  const entitlement  = entitlementRes.ok  ? await entitlementRes.json()  : null;
+  const subscription  = subscriptionRes.ok  ? await subscriptionRes.json()  : null;
+  const entitlement   = entitlementRes.ok   ? await entitlementRes.json()   : null;
+  const nextBookingRaw = nextBookingRes.ok  ? await nextBookingRes.json()   : null;
+  const nextBooking    = nextBookingRaw?.data?.[0] ?? null;
 
-  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement };
+  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement, nextBooking };
 }
 
 function PlanHeaderCard({ entitlement }) {
@@ -242,7 +247,7 @@ function greeting() {
 }
 
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement } = await load();
+  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement, nextBooking } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
@@ -278,6 +283,14 @@ export default async function DashboardPage() {
 
   const subtitle = subParts.join('  ·  ');
 
+  const bpm     = entitlement?.usage?.bookings_per_month;
+  const planRing = {
+    current:  bpm?.current  ?? 0,
+    limit:    bpm?.limit    ?? null,
+    planName: entitlement?.planName ?? subscription?.plan_code ?? 'Solo',
+    pct:      bpm?.limit ? Math.min(1, (bpm.current / bpm.limit)) : 0,
+  };
+
   return (
     <LayoutShell
       title={`${greeting()}, ${tenant?.display_name || 'there'}.`}
@@ -298,6 +311,12 @@ export default async function DashboardPage() {
       </>
     }
     >
+      <TodayHero
+        tenantName={tenant?.display_name || null}
+        nextBooking={nextBooking}
+        planRing={planRing}
+      />
+
       {!hideChecklist && (
         <OnboardingChecklist
           tenant={tenant}

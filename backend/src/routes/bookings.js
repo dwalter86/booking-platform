@@ -105,6 +105,7 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
   const resourceId = String(req.query?.resource_id || '').trim() || null;
   const dateFrom = String(req.query?.date_from || '').trim() || null;
   const dateTo = String(req.query?.date_to || '').trim() || null;
+  const sortAsc = String(req.query?.sort || '').trim() === 'start_asc';
   const bookingId = String(req.query?.booking_id || '').trim() || null;
   const page = Math.max(1, Number.parseInt(req.query?.page ?? '1', 10) || 1);
   const perPage = Math.min(100, Math.max(1, Number.parseInt(req.query?.per_page ?? '50', 10) || 50));
@@ -170,7 +171,7 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
          ON r.id = b.resource_id
         AND r.tenant_id = b.tenant_id
        WHERE ${where.join(' AND ')}
-       ORDER BY b.created_at DESC, b.start_at DESC
+       ORDER BY ${sortAsc ? 'b.start_at ASC' : 'b.created_at DESC, b.start_at DESC'}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
