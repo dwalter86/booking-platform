@@ -1,16 +1,11 @@
 import Link from 'next/link';
 import LayoutShell from '../../../components/LayoutShell';
 import { apiFetch, requireAuth } from '../../../lib/auth';
-// CopyButton moved to event-types page
 
 export const dynamic = 'force-dynamic';
 
-// (removed booking mode and form style helpers — now on event types)
-
 export default async function ResourcesPage({ searchParams }) {
   await requireAuth();
-
-  // (baseUrl removed — share panel moved to event types page)
 
   const [response, subscriptionRes] = await Promise.all([
     apiFetch('/api/resources'),
@@ -19,80 +14,113 @@ export default async function ResourcesPage({ searchParams }) {
 
   const rows = response.ok ? await response.json() : [];
   const subscription = subscriptionRes.ok ? await subscriptionRes.json() : null;
+  const isSolo = subscription?.plan_code === 'solo';
+  const pageLabel = isSolo ? 'My Schedule' : 'Resources';
+  const pageDescription = isSolo
+    ? 'Your bookable schedule — the times and formats customers can book with you.'
+    : 'Rooms, studios and equipment that customers can book.';
 
   const error = searchParams?.error || '';
   const success = searchParams?.success || '';
-  // (share panel moved to event types page)
+
+  const list = Array.isArray(rows) ? rows : [];
+  const activeCount = list.filter(r => r.is_active).length;
+  const totalCapacity = list.reduce((sum, r) => sum + (Number(r.capacity) || 0), 0);
+
+  const addButton = (
+    <Link className="btn btn-primary btn-sm" href="/resources/new">
+      Add resource
+    </Link>
+  );
+
+  const breadcrumb = (
+    <>
+      <span>Workspace</span>
+      <span className="av-crumb-sep">/</span>
+      <span className="av-crumb-now">{pageLabel}</span>
+    </>
+  );
 
   return (
-    <LayoutShell>
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
+    <LayoutShell breadcrumb={breadcrumb} headerAction={addButton}>
+      {success && <div className="alert alert-success mb-4">{success}</div>}
+      {error && <div className="alert alert-danger mb-4">{error}</div>}
 
-      <div className="row g-4">
+      {/* ── Page header ── */}
+      <div className="av-page-header">
+        <div className="av-ph-title">
+          <h1>{pageLabel}</h1>
+          <p>{pageDescription}</p>
+        </div>
+      </div>
 
-        {/* ── Resource list ── */}
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h3 className="card-title">Resources</h3>
-              <Link className="btn btn-sm btn-primary" href="/resources/new">
-                Add resource
-              </Link>
-            </div>
-            <div className="table-responsive">
-              <table className="table table-vcenter card-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Capacity</th>
-                    <th>Timezone</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!Array.isArray(rows) || rows.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="text-secondary">
-                        No resources found. Click Add resource to create one.
-                      </td>
-                    </tr>
-                  ) : rows.map(row => {
-                    return (
-                      <tr key={row.id}>
-                        <td>
-                          <div>{row.name}</div>
-                          <div className="text-secondary small">{row.slug}</div>
-                        </td>
-                        <td>
-                          <span className={`badge ${row.is_active ? 'bg-green-lt' : 'bg-red-lt'}`}>
-                            {row.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td>{row.capacity}</td>
-                        <td className="text-secondary small">{row.timezone || 'Europe/London'}</td>
-                        <td>
-                          <div className="d-flex gap-1 flex-wrap justify-content-end">
-                            <Link
-                              className="btn btn-sm btn-outline-primary"
-                              href={`/resources/${row.id}/edit`}
-                            >
-                              Edit
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+      {/* ── Summary ── */}
+      <div className="av-summary">
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Total resources</div>
+            <div className="av-sc-value">{list.length}</div>
           </div>
         </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Active</div>
+            <div className="av-sc-value">{activeCount}</div>
+            <div className="av-sc-sub">of {list.length}</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Inactive</div>
+            <div className="av-sc-value">{list.length - activeCount}</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Total capacity</div>
+            <div className="av-sc-value">{totalCapacity}</div>
+            <div className="av-sc-sub">seats across all resources</div>
+          </div>
+        </div>
+      </div>
 
-        {/* Share panel moved to event types page */}
+      {/* ── List ── */}
+      <div className="av-list">
+        <div className="av-list-row av-list-head cols-resources">
+          <div>Name</div>
+          <div>Status</div>
+          <div>Capacity</div>
+          <div>Timezone</div>
+          <div></div>
+        </div>
 
+        {list.length === 0 ? (
+          <div className="av-list-row cols-resources">
+            <div className="av-muted" style={{ gridColumn: '1 / -1' }}>
+              No resources found. Click Add resource to create one.
+            </div>
+          </div>
+        ) : list.map(row => (
+          <div key={row.id} className="av-list-row cols-resources">
+            <div className="av-cell-name">
+              <div className="av-name">{row.name}</div>
+              <div className="av-slug">{row.slug}</div>
+            </div>
+            <div>
+              <span className={`av-pill ${row.is_active ? 'active' : 'inactive'}`}>
+                <span className="av-dot" />
+                {row.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div className="av-muted">{row.capacity}</div>
+            <div className="av-muted">{row.timezone || 'Europe/London'}</div>
+            <div className="av-row-actions">
+              <Link className="av-tiny-btn primary" href={`/resources/${row.id}/edit`}>
+                Edit
+              </Link>
+            </div>
+          </div>
+        ))}
       </div>
     </LayoutShell>
   );

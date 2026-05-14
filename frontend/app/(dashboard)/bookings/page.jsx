@@ -12,10 +12,17 @@ function formatDateTimeLocal(value) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-function badgeClass(status) {
-  if (status === 'confirmed') return 'bg-green-lt';
-  if (status === 'cancelled') return 'bg-red-lt';
-  return 'bg-yellow-lt';
+function pillClass(status) {
+  if (status === 'confirmed') return 'confirmed';
+  if (status === 'cancelled') return 'cancelled';
+  return 'provisional';
+}
+
+function meetingPill(type) {
+  if (type === 'in_person') return <span className="av-pill meet-in-person">In person</span>;
+  if (type === 'online') return <span className="av-pill meet-online">Online</span>;
+  if (type === 'telephone') return <span className="av-pill meet-telephone">Telephone</span>;
+  return null;
 }
 
 export default async function BookingsPage({ searchParams }) {
@@ -49,135 +56,171 @@ export default async function BookingsPage({ searchParams }) {
   ).toString();
 
   const hasActiveFilters = !!(searchParams?.status || searchParams?.resource_id || searchParams?.date_from || searchParams?.date_to);
-  const showFilter = searchParams?.filter === '1' || hasActiveFilters;
-  const filterToggleParams = new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'filter')));
-  const filterToggleHref = showFilter ? `/bookings?${filterToggleParams}` : `/bookings?${filterToggleParams}&filter=1`;
+
+  // Summary — counts of the current result page
+  const confirmedCount   = bookings.filter((b) => b.status === 'confirmed').length;
+  const provisionalCount = bookings.filter((b) => b.status === 'provisional').length;
+  const cancelledCount   = bookings.filter((b) => b.status === 'cancelled').length;
+  const totalLabel = pagination ? pagination.total_count : bookings.length;
+
+  const breadcrumb = (
+    <>
+      <span>Workspace</span>
+      <span className="av-crumb-sep">/</span>
+      <span className="av-crumb-now">Bookings</span>
+    </>
+  );
 
   return (
-    <LayoutShell>
-      {success ? <div className="alert alert-success">{success}</div> : null}
-      {error ? <div className="alert alert-danger">{error}</div> : null}
-      {searchParams?.error ? <div className="alert alert-danger">{searchParams.error}</div> : null}
+    <LayoutShell breadcrumb={breadcrumb}>
+      {success ? <div className="alert alert-success mb-4">{success}</div> : null}
+      {error ? <div className="alert alert-danger mb-4">{error}</div> : null}
+      {searchParams?.error ? <div className="alert alert-danger mb-4">{searchParams.error}</div> : null}
 
-      {showFilter && (
-      <div className="card mb-4">
-        <div className="card-body">
-          <form className="row g-3" method="get">
-            <input type="hidden" name="filter" value="1" />
-            <div className="col-md-3">
-              <label className="form-label">Status</label>
-              <select className="form-select" name="status" defaultValue={searchParams?.status || ''}>
-                <option value="">All statuses</option>
-                <option value="provisional">Provisional</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label">Resource</label>
-              <select className="form-select" name="resource_id" defaultValue={searchParams?.resource_id || ''}>
-                <option value="">All resources</option>
-                {resources.map((resource) => (
-                  <option key={resource.id} value={resource.id}>{resource.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">From</label>
-              <input className="form-control" type="date" name="date_from" defaultValue={searchParams?.date_from || ''} />
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">To</label>
-              <input className="form-control" type="date" name="date_to" defaultValue={searchParams?.date_to || ''} />
-            </div>
-            <div className="col-md-2 d-flex align-items-end gap-2">
-              <button className="btn btn-primary w-100" type="submit">Apply</button>
-              <Link className="btn btn-outline-secondary" href="/bookings">Reset</Link>
-            </div>
-          </form>
+      {/* ── Page header ── */}
+      <div className="av-page-header">
+        <div className="av-ph-title">
+          <h1>Bookings</h1>
+          <p>Review, confirm, and cancel bookings across all resources.</p>
         </div>
       </div>
-      )}
+
+      {/* ── Summary ── */}
+      <div className="av-summary">
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Total bookings</div>
+            <div className="av-sc-value">{totalLabel}</div>
+            {pagination && <div className="av-sc-sub">across all pages</div>}
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Confirmed</div>
+            <div className="av-sc-value">{confirmedCount}</div>
+            <div className="av-sc-sub">this page</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Provisional</div>
+            <div className="av-sc-value">{provisionalCount}</div>
+            <div className="av-sc-sub">awaiting action</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Cancelled</div>
+            <div className="av-sc-value">{cancelledCount}</div>
+            <div className="av-sc-sub">this page</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Toolbar (filters) ── */}
+      <form className="av-toolbar" method="get">
+        <select className="av-filter-chip" name="status" defaultValue={searchParams?.status || ''}>
+          <option value="">All statuses</option>
+          <option value="provisional">Provisional</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select className="av-filter-chip" name="resource_id" defaultValue={searchParams?.resource_id || ''}>
+          <option value="">All resources</option>
+          {resources.map((resource) => (
+            <option key={resource.id} value={resource.id}>{resource.name}</option>
+          ))}
+        </select>
+        <input
+          className="av-filter-chip"
+          type="date"
+          name="date_from"
+          defaultValue={searchParams?.date_from || ''}
+          aria-label="From date"
+        />
+        <input
+          className="av-filter-chip"
+          type="date"
+          name="date_to"
+          defaultValue={searchParams?.date_to || ''}
+          aria-label="To date"
+        />
+        <div className="av-tb-spacer" />
+        <button className="btn btn-primary btn-sm" type="submit">Apply</button>
+        {hasActiveFilters && (
+          <Link className="av-tiny-btn" href="/bookings">Reset</Link>
+        )}
+      </form>
 
       <div className="row g-4">
         <div className={selectedBooking ? 'col-lg-7' : 'col-12'}>
-          <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h3 className="card-title">Bookings</h3>
-              <Link href={filterToggleHref} className={`btn btn-sm ${hasActiveFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}>
-                Filters{hasActiveFilters ? ' ·' : ''}
-              </Link>
+          <div className="av-list">
+            <div className="av-list-row av-list-head cols-bookings">
+              <div>Customer</div>
+              <div>Resource</div>
+              <div>Start</div>
+              <div>End</div>
+              <div>Status</div>
+              <div></div>
             </div>
-            <div className="table-responsive">
-              <table className="table table-vcenter card-table">
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Resource</th>
-                    <th>Customer</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Meeting</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="text-secondary">No bookings found.</td>
-                    </tr>
-                  ) : bookings.map((booking) => {
-                    const isSelected = booking.id === selectedBookingId;
-                    return (
-                      <tr key={booking.id} className={isSelected ? 'table-active' : undefined}>
-                        <td><span className={`badge ${badgeClass(booking.status)}`}>{booking.status}</span></td>
-                        <td>{booking.resource_name || 'Unknown resource'}</td>
-                        <td>
-                          <div>{booking.customer_name || '—'}</div>
-                          <div className="text-secondary small">{booking.customer_email || '—'}</div>
-                        </td>
-                        <td>{formatDateTime(booking.start_at)}</td>
-                        <td>{formatDateTime(booking.end_at)}</td>
-                        <td>
-                          {booking.meeting_type === 'in_person' && <span className="badge bg-blue-lt">In person</span>}
-                          {booking.meeting_type === 'online' && <span className="badge bg-cyan-lt">Online</span>}
-                          {booking.meeting_type === 'telephone' && <span className="badge bg-yellow-lt">Telephone</span>}
-                        </td>
-                        <td className="text-end">
-                          <Link
-                            className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
-                            href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), booking_id: booking.id }).toString()}`}
-                          >
-                            View
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+
+            {bookings.length === 0 ? (
+              <div className="av-list-row cols-bookings">
+                <div className="av-muted" style={{ gridColumn: '1 / -1' }}>
+                  No bookings found.
+                </div>
+              </div>
+            ) : bookings.map((booking) => {
+              const isSelected = booking.id === selectedBookingId;
+              return (
+                <div
+                  key={booking.id}
+                  className={`av-list-row cols-bookings${isSelected ? ' selected' : ''}`}
+                >
+                  <div className="av-cell-name">
+                    <div className="av-name">{booking.customer_name || '—'}</div>
+                    <div className="av-slug">{booking.customer_email || '—'}</div>
+                  </div>
+                  <div className="av-muted">{booking.resource_name || 'Unknown resource'}</div>
+                  <div className="av-muted">{formatDateTime(booking.start_at)}</div>
+                  <div className="av-muted">{formatDateTime(booking.end_at)}</div>
+                  <div>
+                    <span className={`av-pill ${pillClass(booking.status)}`}>
+                      <span className="av-dot" />
+                      {booking.status}
+                    </span>
+                  </div>
+                  <div className="av-row-actions">
+                    <Link
+                      className={`av-tiny-btn${isSelected ? ' primary' : ''}`}
+                      href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), booking_id: booking.id }).toString()}`}
+                    >
+                      View
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+
             {pagination && pagination.total_pages > 1 && (
-              <div className="card-footer d-flex align-items-center justify-content-between">
-                <span className="text-secondary text-sm">
+              <div className="av-list-foot">
+                <span>
                   {pagination.total_count} bookings — page {pagination.page} of {pagination.total_pages}
                 </span>
-                <div className="d-flex gap-2">
-                  {pagination.page > 1 && (
-                    <Link
-                      className="btn btn-sm btn-outline-secondary"
-                      href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), page: pagination.page - 1 }).toString()}`}
-                    >
-                      Previous
+                <div className="av-pager">
+                  {pagination.page > 1 ? (
+                    <Link href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), page: pagination.page - 1 }).toString()}`}>
+                      Prev
                     </Link>
+                  ) : (
+                    <span className="av-pager-btn disabled">Prev</span>
                   )}
-                  {pagination.page < pagination.total_pages && (
-                    <Link
-                      className="btn btn-sm btn-outline-secondary"
-                      href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), page: pagination.page + 1 }).toString()}`}
-                    >
+                  {pagination.page < pagination.total_pages ? (
+                    <Link href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), page: pagination.page + 1 }).toString()}`}>
                       Next
                     </Link>
+                  ) : (
+                    <span className="av-pager-btn disabled">Next</span>
                   )}
                 </div>
               </div>
@@ -262,7 +305,7 @@ export default async function BookingsPage({ searchParams }) {
               <>
                   <dl className="row mb-0">
                     <dt className="col-sm-4">Status</dt>
-                    <dd className="col-sm-8"><span className={`badge ${badgeClass(selectedBooking.status)}`}>{selectedBooking.status}</span></dd>
+                    <dd className="col-sm-8"><span className={`av-pill ${pillClass(selectedBooking.status)}`}><span className="av-dot" />{selectedBooking.status}</span></dd>
 
                     <dt className="col-sm-4">Resource</dt>
                     <dd className="col-sm-8">{selectedBooking.resource_name || 'Unknown resource'}</dd>
@@ -306,9 +349,7 @@ export default async function BookingsPage({ searchParams }) {
                       <>
                         <dt className="col-sm-4">Meeting</dt>
                         <dd className="col-sm-8">
-                          {selectedBooking.meeting_type === 'in_person' && <span className="badge bg-blue-lt">In person</span>}
-                          {selectedBooking.meeting_type === 'online' && <span className="badge bg-cyan-lt">Online</span>}
-                          {selectedBooking.meeting_type === 'telephone' && <span className="badge bg-yellow-lt">Telephone</span>}
+                          {meetingPill(selectedBooking.meeting_type)}
                           {selectedBooking.meeting_type === 'online' && selectedBooking.booker_phone == null && (
                             <div className="text-muted small mt-1">Meeting details provided on confirmation.</div>
                           )}

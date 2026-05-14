@@ -112,7 +112,7 @@ const soloNav = {
 };
 
 /* ── LayoutShell ───────────────────────────────────────────── */
-export default async function LayoutShell({ title, subtitle, headerAction, children }) {
+export default async function LayoutShell({ title, subtitle, breadcrumb, headerAction, children }) {
   let isSolo     = false;
   let planCode   = null;
   let tenantName = null;
@@ -196,11 +196,17 @@ export default async function LayoutShell({ title, subtitle, headerAction, child
       <div className="av-main">
         <TrialGraceBanner />
 
-        {(title || headerAction) && (
+        {(title || breadcrumb || headerAction) && (
           <div className="av-topbar">
             <div className="av-topbar-left">
-              {title    && <div className="av-topbar-title">{title}</div>}
-              {subtitle && <div className="av-topbar-sub">{subtitle}</div>}
+              {breadcrumb ? (
+                <div className="av-crumb">{breadcrumb}</div>
+              ) : (
+                <>
+                  {title    && <div className="av-topbar-title">{title}</div>}
+                  {subtitle && <div className="av-topbar-sub">{subtitle}</div>}
+                </>
+              )}
             </div>
             {headerAction && (
               <div className="av-topbar-right">{headerAction}</div>

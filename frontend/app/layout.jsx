@@ -1,5 +1,5 @@
-import './globals.css';
 import '@tabler/core/dist/css/tabler.min.css';
+import './globals.css';
 
 export const metadata = {
   title: 'Booking Platform Admin',
