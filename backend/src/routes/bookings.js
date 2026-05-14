@@ -19,7 +19,7 @@ async function getBookingWithResource(client, tenantId, bookingId) {
          b.tenant_id,
          b.resource_id,
          r.name AS resource_name,
-         b.event_type_id,
+         b.status,
          et.name AS event_type_name,
          et.colour AS event_type_colour,
          b.status,
@@ -156,6 +156,9 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
          b.tenant_id,
          b.resource_id,
          r.name AS resource_name,
+         b.event_type_id,
+         et.name AS event_type_name,
+         et.colour AS event_type_colour,
          b.status,
          b.start_at,
          b.end_at,
@@ -177,6 +180,9 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
        LEFT JOIN public.resources r
          ON r.id = b.resource_id
         AND r.tenant_id = b.tenant_id
+       LEFT JOIN public.event_types et
+         ON et.id = b.event_type_id
+        AND et.tenant_id = b.tenant_id
        WHERE ${where.join(' AND ')}
        ORDER BY ${sortAsc ? 'b.start_at ASC' : 'b.created_at DESC, b.start_at DESC'}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,

@@ -133,7 +133,7 @@ export default function TodayHero({ tenantName, nextBooking, planRing }) {
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>{nextBooking.customer_name || 'Booking'}</div>
                   <div style={{ color: 'rgba(255,255,255,.65)', fontSize: 12.5, lineHeight: 1.4 }}>
-                    {nextBooking.resource_name || ''}
+                   {nextBooking.event_type_name || nextBooking.resource_name || ''}
                   </div>
                   {nextBooking.customer_email && (
                     <div style={{ fontFamily: 'var(--av-font-mono)', fontSize: 11, color: 'rgba(255,255,255,.45)', marginTop: 4 }}>
