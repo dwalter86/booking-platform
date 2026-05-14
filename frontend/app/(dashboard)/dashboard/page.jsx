@@ -315,16 +315,12 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="row mb-4">
-        <div className="col-12">
-          <DashboardCalendarClient
-            unavailabilityBlocks={unavailabilityBlocks}
-            resources={resources}
-            availabilityRulesByResource={allRulesByResource}
-            showResourceSelector={resources.length > 1 && subscription?.plan_code !== 'solo'}
-          />
-        </div>
-      </div>
+      <DashboardCalendarClient
+        unavailabilityBlocks={unavailabilityBlocks}
+        resources={resources}
+        availabilityRulesByResource={allRulesByResource}
+        showResourceSelector={resources.length > 1 && subscription?.plan_code !== 'solo'}
+      />
 
       <ActivityTable initialBookings={bookings} totalCount={totalBookings} />
     </LayoutShell>
