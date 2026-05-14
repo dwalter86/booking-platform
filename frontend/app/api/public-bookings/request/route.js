@@ -6,6 +6,7 @@ export async function POST(request) {
   const form = await request.formData();
 
   const resourceId = String(form.get('resource_id') || '').trim();
+  const eventTypeId = String(form.get('event_type_id') || '').trim() || null;
   const customerName = String(form.get('customer_name') || '').trim();
   const customerEmail = String(form.get('customer_email') || '').trim();
   const customerPhone = String(form.get('customer_phone') || '').trim();
@@ -45,6 +46,7 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         resource_id: resourceId,
+        event_type_id: eventTypeId,
         start_at: startAt,
         end_at: endAt,
         customer_name: customerName,
