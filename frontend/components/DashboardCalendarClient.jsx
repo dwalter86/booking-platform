@@ -38,6 +38,7 @@ export default function DashboardCalendarClient({
   const [monthLabel,   setMonthLabel]   = useState(() => formatMonthYear(new Date()));
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [bookings,     setBookings]     = useState([]);
+  const [utilDays,     setUtilDays]     = useState({});
 
   // ── Selected day display ─────────────────────────────────────
   const selectedDateLabel = useMemo(() => {
@@ -70,8 +71,8 @@ export default function DashboardCalendarClient({
     return map;
   }, [bookings]);
 
-  const maxDay   = Math.max(1, ...Object.values(dailyCounts));
-  const dayPct   = (dailyCounts[selectedDate] || 0) / maxDay;
+  const utilDay  = utilDays[selectedDate];
+  const dayPct   = utilDay?.pct ?? 0;
   const ringTone = dayPct >= 0.9 ? 'full' : dayPct >= 0.6 ? 'warn' : 'ok';
 
   // ── Calendar events ──────────────────────────────────────────
@@ -207,7 +208,6 @@ export default function DashboardCalendarClient({
               dayCellClassNames={(arg) => arg.dateStr === selectedDate ? ['fc-day-selected'] : []}
               datesSet={(info) => {
                 setCalApi(info.view.calendar);
-                // Use midpoint of the range to avoid showing previous month
                 const mid = new Date((info.start.getTime() + info.end.getTime()) / 2);
                 setMonthLabel(formatMonthYear(mid));
                 const from = info.start.toISOString().slice(0, 10);
@@ -215,6 +215,13 @@ export default function DashboardCalendarClient({
                 fetch(`/api/bookings/list?per_page=200&date_from=${from}&date_to=${to}`)
                   .then(r => r.ok ? r.json() : {})
                   .then(data => setBookings(Array.isArray(data) ? data : (data.data || [])));
+                fetch(`/api/analytics/utilisation?date_from=${from}&date_to=${to}`)
+                  .then(r => r.ok ? r.json() : {})
+                  .then(data => {
+                    const map = {};
+                    for (const d of (data.days || [])) map[d.date] = d;
+                    setUtilDays(map);
+                  });
               }}
             />
           </div>
@@ -247,7 +254,11 @@ export default function DashboardCalendarClient({
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10 }}>
-              {[['Bookings', totalCount], ['Confirmed', confirmedCount], ['Pending', pendingCount]].map(([label, val]) => (
+            {[
+              ['Bookings', totalCount],
+              ['Confirmed', confirmedCount],
+              ['Capacity', utilDay ? `${utilDay.booked}/${utilDay.max_capacity}` : '—'],
+            ].map(([label, val]) => (
                 <div key={label} style={{ textAlign: 'center', background: 'var(--av-paper-2)', borderRadius: 7, padding: '5px 4px', border: '1px solid var(--av-line)' }}>
                   <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--av-ink)', lineHeight: 1 }}>{val}</div>
                   <div style={{ fontFamily: 'var(--av-font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--av-ink-4)', marginTop: 2 }}>{label}</div>

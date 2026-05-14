@@ -154,7 +154,7 @@ function isBlocked(blocks, slotStart, slotEnd) {
  * @param {string} timezone
  * @returns {{ start: DateTime, end: DateTime }[]}
  */
-function resolveOpenWindowsForDate(dateStr, dayOfWeek, rules, exceptions, timezone) {
+export function resolveOpenWindowsForDate(dateStr, dayOfWeek, rules, exceptions, timezone) {
   // 1. Check for an exception on this specific date
   const dateExceptions = exceptions.filter((e) => e.exception_date === dateStr);
 

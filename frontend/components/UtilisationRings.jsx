@@ -35,7 +35,11 @@ export default function UtilisationRings() {
   if (error) return null;
 
   const avg = data
-    ? Math.round((data.days.reduce((s, d) => s + d.pct, 0) / Math.max(1, data.days.length)) * 100)
+    ? (() => {
+        const openDays = data.days.filter(d => d.max_capacity > 0);
+        if (!openDays.length) return 0;
+        return Math.round((openDays.reduce((s, d) => s + d.pct, 0) / openDays.length) * 100);
+      })()
     : null;
 
   const todayStr = (() => {
@@ -96,9 +100,9 @@ export default function UtilisationRings() {
               }}>
                 {dow}
               </span>
-              {d.booked > 0 && (
+              {d.max_capacity > 0 && (
                 <span style={{ fontFamily: 'var(--av-font-mono)', fontSize: 9, color: 'var(--av-ink-3)', marginTop: -2 }}>
-                  {d.booked} booking{d.booked !== 1 ? 's' : ''}
+                  {d.booked}/{d.max_capacity}
                 </span>
               )}
             </div>
