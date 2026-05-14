@@ -10,72 +10,120 @@ export default async function LocationsPage({ searchParams }) {
   const locationsRes = await apiFetch('/api/locations');
   const locations = locationsRes.ok ? await locationsRes.json().catch(() => []) : [];
 
+  const list = Array.isArray(locations) ? locations : [];
   const selectedLocationId = searchParams?.location_id || '';
-  const selectedLocation = locations.find(l => l.id === selectedLocationId) || null;
+  const selectedLocation = list.find(l => l.id === selectedLocationId) || null;
   const isAddPanel = searchParams?.add === '1';
   const success = searchParams?.success || '';
   const error = searchParams?.error || '';
 
+  const activeCount = list.filter(l => l.is_active).length;
+  const countryCount = new Set(list.map(l => l.country).filter(Boolean)).size;
+
+  const breadcrumb = (
+    <>
+      <span>Workspace</span>
+      <span className="av-crumb-sep">/</span>
+      <span className="av-crumb-now">Locations</span>
+    </>
+  );
+
+  const addButton = (
+    <Link className="btn btn-primary btn-sm" href="/locations?add=1">
+      Add location
+    </Link>
+  );
+
   return (
-    <LayoutShell title="Locations">
-      {success && <div className="alert alert-success">{success}</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
+    <LayoutShell breadcrumb={breadcrumb} headerAction={addButton}>
+      {success && <div className="alert alert-success mb-4">{success}</div>}
+      {error && <div className="alert alert-danger mb-4">{error}</div>}
+
+      {/* ── Page header ── */}
+      <div className="av-page-header">
+        <div className="av-ph-title">
+          <h1>Locations</h1>
+          <p>Physical places resources belong to — offices, studios, venues.</p>
+        </div>
+      </div>
+
+      {/* ── Summary ── */}
+      <div className="av-summary">
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Total locations</div>
+            <div className="av-sc-value">{list.length}</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Active</div>
+            <div className="av-sc-value">{activeCount}</div>
+            <div className="av-sc-sub">of {list.length}</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Inactive</div>
+            <div className="av-sc-value">{list.length - activeCount}</div>
+          </div>
+        </div>
+        <div className="av-summary-card">
+          <div>
+            <div className="av-sc-label">Countries</div>
+            <div className="av-sc-value">{countryCount}</div>
+          </div>
+        </div>
+      </div>
 
       <div className="row g-4">
         <div className={selectedLocation || isAddPanel ? 'col-lg-7' : 'col-12'}>
-          <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h3 className="card-title">Locations</h3>
-              <Link className="btn btn-sm btn-primary" href="/locations?add=1">
-                Add location
-              </Link>
+          <div className="av-list">
+            <div className="av-list-row av-list-head cols-locations">
+              <div>Name</div>
+              <div>City</div>
+              <div>Postcode</div>
+              <div>Country</div>
+              <div>Status</div>
+              <div></div>
             </div>
-            <div className="table-responsive">
-              <table className="table table-vcenter card-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>City</th>
-                    <th>Postcode</th>
-                    <th>Country</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locations.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="text-secondary">
-                        No locations yet. Add your first location to get started.
-                      </td>
-                    </tr>
-                  ) : locations.map((loc) => {
-                    const isSelected = loc.id === selectedLocationId;
-                    return (
-                      <tr key={loc.id} className={isSelected ? 'table-active' : undefined}>
-                        <td><strong>{loc.name}</strong></td>
-                        <td>{loc.city || '—'}</td>
-                        <td>{loc.postcode || '—'}</td>
-                        <td>{loc.country || '—'}</td>
-                        <td>
-                          <span className={`badge ${loc.is_active ? 'bg-green-lt' : 'bg-red-lt'}`}>
-                            {loc.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="text-end">
-                          <Link
-                            className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'}`}
-                            href={`/locations?location_id=${loc.id}`}
-                          >
-                            Edit
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+
+            {list.length === 0 ? (
+              <div className="av-list-row cols-locations">
+                <div className="av-muted" style={{ gridColumn: '1 / -1' }}>
+                  No locations yet. Add your first location to get started.
+                </div>
+              </div>
+            ) : list.map((loc) => {
+              const isSelected = loc.id === selectedLocationId;
+              return (
+                <div
+                  key={loc.id}
+                  className={`av-list-row cols-locations${isSelected ? ' selected' : ''}`}
+                >
+                  <div className="av-cell-name">
+                    <div className="av-name">{loc.name}</div>
+                  </div>
+                  <div className="av-muted">{loc.city || '—'}</div>
+                  <div className="av-muted">{loc.postcode || '—'}</div>
+                  <div className="av-muted">{loc.country || '—'}</div>
+                  <div>
+                    <span className={`av-pill ${loc.is_active ? 'active' : 'inactive'}`}>
+                      <span className="av-dot" />
+                      {loc.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="av-row-actions">
+                    <Link
+                      className={`av-tiny-btn${isSelected ? ' primary' : ''}`}
+                      href={`/locations?location_id=${loc.id}`}
+                    >
+                      Edit
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
