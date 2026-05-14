@@ -711,3 +711,94 @@ pre {
 }
 .av-crumb .av-crumb-sep { color: var(--av-ink-4); }
 .av-crumb .av-crumb-now { color: var(--av-main); font-weight: 600; }
+
+/* ============================================================
+   Share panel — floating (slideover + modal variants)
+   ============================================================ */
+.av-share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 26, 79, .28);
+  display: flex;
+}
+.av-share-overlay.slideover { justify-content: flex-end; }
+
+.av-share-panel {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--av-shadow-md);
+  overflow: hidden;
+}
+.av-share-panel.slideover {
+  width: 420px;
+  max-width: 90vw;
+  height: 100%;
+  animation: avShareSlideIn .22s cubic-bezier(.2, .6, .1, 1);
+}
+@keyframes avShareSlideIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.av-share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--av-main);
+  color: #fff;
+  flex-shrink: 0;
+}
+.av-share-title { margin: 0; font-size: 15px; font-weight: 600; color: #fff; }
+.av-share-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, .8);
+  font-size: 15px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--av-r-sm);
+}
+.av-share-close:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+
+.av-share-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.av-share-section h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--av-ink);
+}
+.av-share-section p {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--av-ink-3);
+}
+.av-share-url { display: flex; gap: 6px; }
+.av-share-url input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--av-line);
+  border-radius: var(--av-r-sm);
+  font-size: 12.5px;
+  color: var(--av-ink-2);
+  background: var(--av-paper-2);
+}
+.av-share-placeholder {
+  padding: 12px;
+  border: 1px solid var(--av-line);
+  border-radius: var(--av-r-sm);
+  background: var(--av-paper-2);
+  font-size: 12.5px;
+  color: var(--av-ink-3);
+}
+.av-share-placeholder.mono { font-family: var(--av-font-mono); }

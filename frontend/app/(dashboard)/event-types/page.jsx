@@ -2,6 +2,7 @@ import Link from 'next/link';
 import LayoutShell from '../../../components/LayoutShell';
 import { apiFetch, requireAuth } from '../../../lib/auth';
 import CopyButton from '../../../components/CopyButton';
+import ShareEventTypePanel from '../../../components/ShareEventTypePanel';
 import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -32,9 +33,6 @@ export default async function EventTypesPage({ searchParams }) {
 
   const success = searchParams?.success || '';
   const error   = searchParams?.error   || '';
-  const selectedEventTypeId = searchParams?.event_type_id || '';
-  const panel = searchParams?.panel || '';
-  const isSharePanel = panel === 'share';
 
   const soloResource = isSolo && Array.isArray(resources) && resources.length > 0
     ? resources[0]
@@ -51,7 +49,6 @@ export default async function EventTypesPage({ searchParams }) {
 
   const resourceId = soloResource?.id || '';
   const list = Array.isArray(eventTypes) ? eventTypes : [];
-  const selectedEventType = list.find(et => et.id === selectedEventTypeId) || null;
 
   const activeCount = list.filter(et => et.status === 'active').length;
   const avgDuration = list.length
@@ -118,7 +115,7 @@ export default async function EventTypesPage({ searchParams }) {
       <div className="row g-4">
 
         {/* ── Event type list ── */}
-        <div className={selectedEventType && isSharePanel ? 'col-lg-7' : 'col-12'}>
+        <div className="col-12">
           <div className="av-list">
             <div className="av-list-row av-list-head cols-events">
               <div></div>
@@ -143,11 +140,10 @@ export default async function EventTypesPage({ searchParams }) {
                 </div>
               </div>
             ) : list.map(et => {
-              const isShareSelected = et.id === selectedEventTypeId && isSharePanel;
               return (
                 <div
                   key={et.id}
-                  className={`av-list-row cols-events${isShareSelected ? ' selected' : ''}`}
+                  className="av-list-row cols-events"
                 >
                   <span
                     className="av-evt-swatch"
@@ -174,85 +170,16 @@ export default async function EventTypesPage({ searchParams }) {
                     >
                       Edit
                     </Link>
-                    <Link
-                      className="av-tiny-btn"
-                      href={`/event-types?event_type_id=${et.id}&panel=share`}
-                    >
-                      Share
-                    </Link>
+                    <ShareEventTypePanel
+                      eventType={et}
+                      baseUrl={baseUrl}
+                    />
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-
-        {/* ── Share panel ── */}
-        {selectedEventType && isSharePanel && (
-          <div className="col-lg-5 panel-slide-in">
-            <div className="card">
-              <div
-                className="card-header d-flex align-items-center justify-content-between"
-                style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}
-              >
-                <h3 className="card-title" style={{ color: '#ffffff' }}>
-                  {`Share — ${selectedEventType.name}`}
-                </h3>
-                <Link
-                  href="/event-types"
-                  className="btn btn-sm btn-outline-light"
-                  aria-label="Close"
-                >
-                  Close
-                </Link>
-              </div>
-              <div className="card-body">
-                <div className="d-flex flex-column gap-4">
-
-                  {/* Public URL */}
-                  <div>
-                    <h4 className="mb-1">Public booking URL</h4>
-                    <p className="text-secondary small mb-3">
-                      Share this link with customers to let them book this event type directly.
-                    </p>
-                    <div className="input-group">
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        readOnly
-                        value={`${baseUrl}/book/${selectedEventType.slug}`}
-                      />
-                      <CopyButton text={`${baseUrl}/book/${selectedEventType.slug}`} />
-                    </div>
-                  </div>
-
-                  {/* Embed guide */}
-                  <div>
-                    <h4 className="mb-1">Embed guide</h4>
-                    <p className="text-secondary small mb-0">
-                      Instructions for embedding this booking form on your website will appear here.
-                    </p>
-                    <div className="rounded border bg-light p-3 mt-2 text-secondary small">
-                      Coming soon
-                    </div>
-                  </div>
-
-                  {/* Embed code */}
-                  <div>
-                    <h4 className="mb-1">Embed code</h4>
-                    <p className="text-secondary small mb-0">
-                      Copy and paste this snippet into your website to embed the booking form.
-                    </p>
-                    <div className="rounded border bg-light p-3 mt-2 text-secondary small font-monospace">
-                      Coming soon
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </LayoutShell>
