@@ -123,6 +123,7 @@ export default async function EventTypesPage({ searchParams }) {
             <div className="av-list-row av-list-head cols-events">
               <div></div>
               <div>Name</div>
+              <div>Resource</div>
               <div>Duration</div>
               <div>Mode</div>
               <div>Form style</div>
@@ -156,6 +157,7 @@ export default async function EventTypesPage({ searchParams }) {
                     <div className="av-name">{et.name}</div>
                     <div className="av-slug">{et.slug}</div>
                   </div>
+                  <div className="av-muted">{et.resource_name || '—'}</div>
                   <div className="av-muted">{et.duration_minutes} min</div>
                   <div className="av-muted">{bookingModeLabel(et.booking_mode)}</div>
                   <div className="av-muted">{et.booking_form_type}</div>

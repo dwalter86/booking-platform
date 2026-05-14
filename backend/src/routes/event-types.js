@@ -17,17 +17,23 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
   const rows = await withTenantContext(req.auth.tenant_id, async (client) => {
     if (resource_id) {
       const result = await client.query(
-        `SELECT * FROM public.event_types
-          WHERE resource_id = $1 AND tenant_id = $2
-          ORDER BY created_at ASC`,
+        `SELECT et.*, r.name AS resource_name
+           FROM public.event_types et
+           LEFT JOIN public.resources r
+             ON r.id = et.resource_id AND r.tenant_id = et.tenant_id
+          WHERE et.resource_id = $1 AND et.tenant_id = $2
+          ORDER BY et.created_at ASC`,
         [resource_id, req.auth.tenant_id]
       );
       return result.rows;
     }
     const result = await client.query(
-      `SELECT * FROM public.event_types
-        WHERE tenant_id = $1
-        ORDER BY created_at ASC`,
+      `SELECT et.*, r.name AS resource_name
+         FROM public.event_types et
+         LEFT JOIN public.resources r
+           ON r.id = et.resource_id AND r.tenant_id = et.tenant_id
+        WHERE et.tenant_id = $1
+        ORDER BY et.created_at ASC`,
       [req.auth.tenant_id]
     );
     return result.rows;

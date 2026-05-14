@@ -575,8 +575,9 @@ pre {
 
 /* Per-page column grids */
 .cols-resources { grid-template-columns: 1.6fr .9fr .8fr 1.2fr auto; }
-.cols-events    { grid-template-columns: 14px 1.6fr .9fr .9fr 1fr .9fr auto; }
+.cols-events    { grid-template-columns: 14px 1.6fr 1fr .9fr .9fr 1fr .9fr 116px; }
 .cols-bookings  { grid-template-columns: 1.5fr 1fr 1fr 1.2fr .9fr auto; }
+.av-list-row > * { min-width: 0; }
 
 /* Cell primitives */
 .av-cell-name .av-name {
@@ -622,7 +623,7 @@ pre {
 .av-cap-bar .av-cb-fill { height: 100%; background: var(--av-highlight); border-radius: 99px; }
 
 /* Event colour swatch */
-.av-evt-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+.av-evt-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; justify-self: start; }
 
 /* Row actions */
 .av-row-actions { display: flex; gap: 4px; justify-content: flex-end; }
