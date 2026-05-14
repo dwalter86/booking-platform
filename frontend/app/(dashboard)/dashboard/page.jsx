@@ -2,6 +2,8 @@ import LayoutShell from '../../../components/LayoutShell';
 import TodayHero from '../../../components/TodayHero';
 import ActivityTable from '../../../components/ActivityTable';
 import UtilisationRings from '../../../components/UtilisationRings';
+import PendingApprovals from '../../../components/PendingApprovals';
+import BookingLinkCard from '../../../components/BookingLinkCard';
 import DataCard from '../../../components/DataCard';
 import FadeOut from '../../../components/FadeOut';
 import DashboardCalendarClient from '../../../components/DashboardCalendarClient';
@@ -19,7 +21,7 @@ function badgeClass(status) {
 async function load() {
   await requireAuth();
   const now = new Date().toISOString();
-  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes, entitlementRes, nextBookingRes] = await Promise.all([
+  const [resourcesRes, bookingsRes, tenantRes, blocksRes, subscriptionRes, entitlementRes, nextBookingRes, eventTypesRes] = await Promise.all([
     apiFetch('/api/resources'),
     apiFetch('/api/bookings?per_page=5'),
     apiFetch('/api/tenant/profile'),
@@ -27,6 +29,7 @@ async function load() {
     apiFetch('/api/plans/subscription'),
     apiFetch('/api/entitlement'),
     apiFetch(`/api/bookings?status=confirmed&date_from=${now}&sort=start_asc&per_page=1`),
+    apiFetch('/api/event-types'),
   ]);
 
   const resourcesRaw = resourcesRes.ok ? await resourcesRes.json() : [];
@@ -55,8 +58,10 @@ async function load() {
   const entitlement   = entitlementRes.ok   ? await entitlementRes.json()   : null;
   const nextBookingRaw = nextBookingRes.ok  ? await nextBookingRes.json()   : null;
   const nextBooking    = nextBookingRaw?.data?.[0] ?? null;
+  const eventTypesRaw  = eventTypesRes.ok   ? await eventTypesRes.json()    : [];
+  const eventTypes     = Array.isArray(eventTypesRaw) ? eventTypesRaw : [];
 
-  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement, nextBooking };
+  return { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement, nextBooking, eventTypes };
 }
 
 function PlanHeaderCard({ entitlement }) {
@@ -249,7 +254,7 @@ function greeting() {
 }
 
 export default async function DashboardPage() {
-  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement, nextBooking } = await load();
+  const { resources, bookings, totalBookings, tenant, hasAnyRules, unavailabilityBlocks, allRulesByResource, subscription, entitlement, nextBooking, eventTypes } = await load();
 
   const profileComplete  = Boolean(tenant?.display_name || tenant?.contact_email);
   const resourceComplete = resources.length > 0;
@@ -266,24 +271,7 @@ export default async function DashboardPage() {
            d.getDate()     === now.getDate();
   }).length;
 
-  const subParts = [`${todayStr}.`];
-  if (todayBookings === 0) {
-    const upcoming = bookings
-      .filter(b => b.status !== 'cancelled' && new Date(b.start_at) > new Date())
-      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at))[0];
-    if (upcoming) {
-      const upcomingDate = new Date(upcoming.start_at).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-      const upcomingTime = new Date(upcoming.start_at).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
-      subParts.push(`No bookings today. Next: ${upcoming.customer_name || 'Booking'}, ${upcomingDate} at ${upcomingTime}.`);
-    } else {
-      subParts.push('No bookings starting today.');
-    }
-  } else {
-    subParts.push(`${todayBookings} booking${todayBookings !== 1 ? 's' : ''} starting today.`);
-  }
-  if (!hideChecklist) subParts.push('Complete setup to go live.');
-
-  const subtitle = subParts.join('  ·  ');
+  // subtitle removed — TodayHero covers this information
 
   const bpm     = entitlement?.usage?.bookings_per_month;
   const planRing = {
@@ -294,27 +282,7 @@ export default async function DashboardPage() {
   };
 
   return (
-    <LayoutShell
-      title={`${greeting()}, ${tenant?.display_name || 'there'}.`}
-      subtitle={subtitle}
-      headerAction={
-      <>
-        <PlanHeaderCard entitlement={entitlement} />
-        <div className="card mb-0 ms-2" style={{ minWidth: '160px', alignSelf: 'stretch' }}>
-          <div className="card-body p-3 d-flex flex-column justify-content-center">
-            <a href="/bookings?status=provisional" className="btn btn-sm btn-outline-warning w-100 mb-2">
-              Pending{bookings.filter(b => b.status === 'provisional').length > 0 ? ` (${bookings.filter(b => b.status === 'provisional').length})` : ''}
-            </a>
-            <a href="/book" target="_blank" className="btn btn-sm btn-outline-primary w-100">
-              New booking
-            </a>
-          </div>
-        </div>
-      </>
-    }
-    >
-      <UtilisationRings />
-
+    <LayoutShell>
       <TodayHero
         tenantName={tenant?.display_name || null}
         nextBooking={nextBooking}
@@ -328,6 +296,15 @@ export default async function DashboardPage() {
           hasAnyRules={hasAnyRules}
         />
       )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 18, alignItems: 'stretch' }}>
+        <BookingLinkCard
+          host={tenant?.custom_domain || 'myavailio.com'}
+          eventTypes={eventTypes}
+        />
+        <UtilisationRings />
+        <PendingApprovals />
+      </div>
 
       {bookings.filter(b => b.status === 'provisional').length > 0 && (
         <div className="alert alert-warning d-flex align-items-center justify-content-between mb-4">

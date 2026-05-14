@@ -51,7 +51,8 @@ export default function UtilisationRings() {
       borderRadius: 'var(--av-r-lg)',
       padding: '16px 18px',
       boxShadow: 'var(--av-shadow-sm)',
-      marginBottom: 18,
+      height: '100%',
+      boxSizing: 'border-box',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <span style={{ fontFamily: 'var(--av-font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--av-ink-3)' }}>

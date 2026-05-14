@@ -3,6 +3,7 @@ html, body {
 }
 body {
   margin: 0;
+  padding: 0 !important;
   background: #f6f8fb;
 }
 pre {
