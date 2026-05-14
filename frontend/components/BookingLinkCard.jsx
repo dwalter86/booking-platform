@@ -6,13 +6,29 @@ export default function BookingLinkCard({ host, eventTypes = [] }) {
   const [copied, setCopied] = useState(null);
 
   function copy(url) {
-    navigator.clipboard.writeText(url).then(() => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(url);
+        setTimeout(() => setCopied(null), 1800);
+      });
+    } else {
+      // Fallback for HTTP environments
+      const el = document.createElement('textarea');
+      el.value = url;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
       setCopied(url);
       setTimeout(() => setCopied(null), 1800);
-    });
+    }
   }
 
-  const baseUrl = host ? `https://${host}` : '';
+  const baseUrl = typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host}`
+    : '';
 
   return (
     <div style={{

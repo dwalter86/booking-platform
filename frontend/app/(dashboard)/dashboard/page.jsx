@@ -299,7 +299,6 @@ export default async function DashboardPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 18, alignItems: 'stretch' }}>
         <BookingLinkCard
-          host={tenant?.custom_domain || 'myavailio.com'}
           eventTypes={eventTypes}
         />
         <UtilisationRings />
