@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import LayoutShell from '../../../components/LayoutShell';
 import { requireAuth, apiFetch } from '../../../lib/auth';
+import DeleteLocationButton from '../../../components/DeleteLocationButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,7 +116,7 @@ export default async function LocationsPage({ searchParams }) {
                   </div>
                   <div className="av-row-actions">
                     <Link
-                      className={`av-tiny-btn${isSelected ? ' primary' : ''}`}
+                      className="av-tiny-btn primary"
                       href={`/locations?location_id=${loc.id}`}
                     >
                       Edit
@@ -240,13 +241,7 @@ export default async function LocationsPage({ searchParams }) {
                   </div>
                 </form>
                 {!isAddPanel && (
-                  <form action="/location-actions/delete" method="post"
-                    onSubmit={(e) => { if (!confirm('Delete this location?')) e.preventDefault(); }}>
-                    <input type="hidden" name="location_id" value={selectedLocation.id} />
-                    <button className="btn btn-outline-danger btn-sm" type="submit">
-                      Delete
-                    </button>
-                  </form>
+                  <DeleteLocationButton locationId={selectedLocation.id} />
                 )}
               </div>
             </div>
