@@ -19,7 +19,7 @@ async function getBookingWithResource(client, tenantId, bookingId) {
          b.tenant_id,
          b.resource_id,
          r.name AS resource_name,
-         b.status,
+         b.event_type_id,
          et.name AS event_type_name,
          et.colour AS event_type_colour,
          b.status,
@@ -32,13 +32,15 @@ async function getBookingWithResource(client, tenantId, bookingId) {
          b.notes,
          b.source,
          b.public_reference AS reference_code,
+         b.meeting_type,
+         b.location_id,
+         b.booker_phone,
          b.confirmed_at,
          b.cancelled_at,
          b.cancellation_reason,
          b.created_by_user_id,
          b.created_at,
-         b.updated_at,
-         COUNT(*) OVER() AS total_count
+         b.updated_at
        FROM public.bookings b
        LEFT JOIN public.resources r
          ON r.id = b.resource_id
@@ -46,8 +48,8 @@ async function getBookingWithResource(client, tenantId, bookingId) {
        LEFT JOIN public.event_types et
          ON et.id = b.event_type_id
         AND et.tenant_id = b.tenant_id
-       WHERE ${where.join(' AND ')}
-       AND b.id = $2`,
+       WHERE b.tenant_id = $1
+         AND b.id = $2`,
     [tenantId, bookingId]
   );
 
@@ -293,7 +295,11 @@ router.post('/:id/cancel', requireAuth, requireAdmin, asyncHandler(async (req, r
 
 router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const body = req.body || {};
-  const allowed = ['customer_name', 'customer_email', 'customer_phone', 'party_size', 'notes', 'start_at', 'end_at'];
+  const allowed = [
+    'customer_name', 'customer_email', 'customer_phone', 'party_size',
+    'notes', 'start_at', 'end_at',
+    'event_type_id', 'resource_id', 'meeting_type', 'public_reference',
+  ];
   const fields = {};
 
   for (const key of allowed) {
@@ -327,6 +333,24 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
     if (isNaN(d.getTime())) throw new AppError(400, 'end_at must be a valid datetime.');
     fields.end_at = d;
   }
+  if ('event_type_id' in fields) {
+    fields.event_type_id = String(fields.event_type_id || '').trim() || null;
+  }
+  if ('resource_id' in fields) {
+    const v = String(fields.resource_id || '').trim();
+    if (!v) throw new AppError(400, 'resource_id cannot be blank.');
+    fields.resource_id = v;
+  }
+  if ('meeting_type' in fields) {
+    const v = String(fields.meeting_type || '').trim();
+    if (v && !['in_person', 'online', 'telephone'].includes(v)) {
+      throw new AppError(400, 'meeting_type must be in_person, online, or telephone.');
+    }
+    fields.meeting_type = v || null;
+  }
+  if ('public_reference' in fields) {
+    fields.public_reference = String(fields.public_reference || '').trim() || null;
+  }
   if (fields.start_at && fields.end_at && fields.end_at <= fields.start_at) {
     throw new AppError(400, 'end_at must be after start_at.');
   }
@@ -348,7 +372,19 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
     );
 
     await writeAudit(client, req.auth.tenant_id, req.auth.sub, 'booking', req.params.id, 'updated', {
-      previous: { customer_name: existing.customer_name, customer_email: existing.customer_email, customer_phone: existing.customer_phone, party_size: existing.party_size, notes: existing.notes, start_at: existing.start_at, end_at: existing.end_at },
+      previous: {
+        customer_name: existing.customer_name,
+        customer_email: existing.customer_email,
+        customer_phone: existing.customer_phone,
+        party_size: existing.party_size,
+        notes: existing.notes,
+        start_at: existing.start_at,
+        end_at: existing.end_at,
+        event_type_id: existing.event_type_id,
+        resource_id: existing.resource_id,
+        meeting_type: existing.meeting_type,
+        public_reference: existing.reference_code,
+      },
       updated: fields,
     });
 

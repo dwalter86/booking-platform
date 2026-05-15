@@ -2,6 +2,7 @@ import Link from 'next/link';
 import LayoutShell from '../../../components/LayoutShell';
 import { formatDateTime } from '../../../lib/format';
 import { requireAuth, apiFetch } from '../../../lib/auth';
+import BookingPanel from '../../../components/booking-panel/BookingPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,8 @@ export default async function BookingsPage({ searchParams }) {
     </>
   );
 
-  return (
+ return (
+    <>
     <LayoutShell breadcrumb={breadcrumb}>
       {success ? <div className="alert alert-success mb-4">{success}</div> : null}
       {error ? <div className="alert alert-danger mb-4">{error}</div> : null}
@@ -153,7 +155,7 @@ export default async function BookingsPage({ searchParams }) {
       </form>
 
       <div className="row g-4">
-        <div className={selectedBooking ? 'col-lg-7' : 'col-12'}>
+        <div className="col-12">
           <div className="av-list">
             <div className="av-list-row av-list-head cols-bookings">
               <div>Customer</div>
@@ -228,173 +230,18 @@ export default async function BookingsPage({ searchParams }) {
           </div>
         </div>
 
-        {selectedBooking && (
-        <div className="col-lg-5 panel-slide-in">
-          <div className="card">
-            <div className="card-header d-flex align-items-center justify-content-between" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
-              <h3 className="card-title" style={{ color: '#ffffff' }}>{isEditMode ? 'Edit booking' : 'Booking details'}</h3>
-              <div className="d-flex align-items-center gap-2">
-                {!isEditMode ? (
-                  <Link
-                    href={`/bookings?${new URLSearchParams({ ...(searchParams || {}), edit: '1' }).toString()}`}
-                    className="btn btn-sm btn-outline-light"
-                  >
-                    Edit
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
-                    className="btn btn-sm btn-outline-light"
-                  >
-                    View
-                  </Link>
-                )}
-                <Link
-                  href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))).toString()}`}
-                  className="btn btn-sm btn-outline-light"
-                  aria-label="Close"
-               >
-               Close
-               </Link> 
-              </div>
-            </div>
-            <div className="card-body">
-              {isEditMode ? (
-                <form action="/booking-actions/update" method="post">
-                  <input type="hidden" name="booking_id" value={selectedBooking.id} />
-                  {detailReturnParams && <input type="hidden" name="return_params" value={detailReturnParams} />}
-                  <div className="mb-3">
-                    <label className="form-label">Customer name</label>
-                    <input className="form-control" type="text" name="customer_name" defaultValue={selectedBooking.customer_name || ''} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Email</label>
-                    <input className="form-control" type="email" name="customer_email" defaultValue={selectedBooking.customer_email || ''} />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Phone</label>
-                    <input className="form-control" type="tel" name="customer_phone" defaultValue={selectedBooking.customer_phone || ''} />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Party size</label>
-                    <input className="form-control" type="number" name="party_size" min="1" defaultValue={selectedBooking.party_size || 1} />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Start</label>
-                    <input className="form-control" type="datetime-local" name="start_at" defaultValue={formatDateTimeLocal(selectedBooking.start_at)} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">End</label>
-                    <input className="form-control" type="datetime-local" name="end_at" defaultValue={formatDateTimeLocal(selectedBooking.end_at)} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Notes</label>
-                    <textarea className="form-control" name="notes" rows="3" defaultValue={selectedBooking.notes || ''} />
-                  </div>
-                  <div className="d-flex gap-2">
-                    <button className="btn btn-primary" type="submit">Save changes</button>
-                    <Link
-                      href={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
-                      className="btn btn-outline-secondary"
-                    >
-                      Cancel
-                    </Link>
-                  </div>
-                </form>
-              ) : (
-              <>
-                  <dl className="row mb-0">
-                    <dt className="col-sm-4">Status</dt>
-                    <dd className="col-sm-8"><span className={`av-pill ${pillClass(selectedBooking.status)}`}><span className="av-dot" />{selectedBooking.status}</span></dd>
-
-                    <dt className="col-sm-4">Resource</dt>
-                    <dd className="col-sm-8">{selectedBooking.resource_name || 'Unknown resource'}</dd>
-
-                    <dt className="col-sm-4">Customer</dt>
-                    <dd className="col-sm-8">{selectedBooking.customer_name || '—'}</dd>
-
-                    <dt className="col-sm-4">Email</dt>
-                    <dd className="col-sm-8">{selectedBooking.customer_email || '—'}</dd>
-
-                    <dt className="col-sm-4">Phone</dt>
-                    <dd className="col-sm-8">{selectedBooking.customer_phone || '—'}</dd>
-
-                    <dt className="col-sm-4">Party size</dt>
-                    <dd className="col-sm-8">{selectedBooking.party_size || 1}</dd>
-
-                    <dt className="col-sm-4">Start</dt>
-                    <dd className="col-sm-8">{formatDateTime(selectedBooking.start_at)}</dd>
-
-                    <dt className="col-sm-4">End</dt>
-                    <dd className="col-sm-8">{formatDateTime(selectedBooking.end_at)}</dd>
-
-                    <dt className="col-sm-4">Source</dt>
-                    <dd className="col-sm-8">{selectedBooking.source || '—'}</dd>
-
-                    <dt className="col-sm-4">Reference</dt>
-                    <dd className="col-sm-8">{selectedBooking.reference_code || '—'}</dd>
-
-                    <dt className="col-sm-4">Notes</dt>
-                    <dd className="col-sm-8">{selectedBooking.notes || '—'}</dd>
-
-                    <dt className="col-sm-4">Confirmed at</dt>
-                    <dd className="col-sm-8">{formatDateTime(selectedBooking.confirmed_at)}</dd>
-
-                    <dt className="col-sm-4">Cancelled at</dt>
-                    <dd className="col-sm-8">{formatDateTime(selectedBooking.cancelled_at)}</dd>
-
-                    <dt className="col-sm-4">Cancel reason</dt>
-                    <dd className="col-sm-8">{selectedBooking.cancellation_reason || '—'}</dd>
-                    {selectedBooking.meeting_type && (
-                      <>
-                        <dt className="col-sm-4">Meeting</dt>
-                        <dd className="col-sm-8">
-                          {meetingPill(selectedBooking.meeting_type)}
-                          {selectedBooking.meeting_type === 'online' && selectedBooking.booker_phone == null && (
-                            <div className="text-muted small mt-1">Meeting details provided on confirmation.</div>
-                          )}
-                          {selectedBooking.meeting_type === 'telephone' && selectedBooking.booker_phone && (
-                            <div className="text-muted small mt-1">{selectedBooking.booker_phone}</div>
-                          )}
-                        </dd>
-                      </>
-                    )}
-                  </dl>
-
-                  <hr />
-
-                  <div className="d-flex flex-column gap-3">
-                    <form action="/api/bookings/confirm" method="post">
-                      <input type="hidden" name="booking_id" value={selectedBooking.id} />
-                      <button
-                        className="btn btn-success"
-                        type="submit"
-                        disabled={selectedBooking.status === 'confirmed' || selectedBooking.status === 'cancelled'}
-                      >
-                        Confirm booking
-                      </button>
-                    </form>
-
-                    <form action="/api/bookings/cancel" method="post">
-                      <input type="hidden" name="booking_id" value={selectedBooking.id} />
-                      <label className="form-label">Cancellation reason</label>
-                      <textarea className="form-control mb-2" name="reason" rows="3" placeholder="Optional reason for cancellation" />
-                      <button
-                        className="btn btn-danger"
-                        type="submit"
-                        disabled={selectedBooking.status === 'cancelled'}
-                      >
-                        Cancel booking
-                      </button>
-                    </form>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
-        )}
-      </div>
     </LayoutShell>
+
+    {selectedBooking && (
+      <BookingPanel
+        booking={selectedBooking}
+        mode={isEditMode ? 'edit' : 'view'}
+        closeHref={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))).toString()}`}
+        editHref={`/bookings?${new URLSearchParams({ ...(searchParams || {}), edit: '1' }).toString()}`}
+        viewHref={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
+      />
+    )}
+    </>
   );
 }
