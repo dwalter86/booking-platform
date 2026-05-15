@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import BookingPanelView from './BookingPanelView';
+import BookingPanelEdit from './BookingPanelEdit';
 
 function initials(name) {
   if (!name) return '?';
@@ -25,8 +26,56 @@ function pillClass(status) {
   return 'status-provisional';
 }
 
-export default function BookingPanel({ booking, mode = 'view', closeHref, editHref, viewHref }) {
+function toLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function buildInitialForm(b) {
+  return {
+    customer_name:    b.customer_name || '',
+    customer_email:   b.customer_email || '',
+    customer_phone:   b.customer_phone || '',
+    party_size:       b.party_size || 1,
+    resource_id:      b.resource_id || '',
+    event_type_id:    b.event_type_id || '',
+    start_at:         toLocalInput(b.start_at),
+    end_at:           toLocalInput(b.end_at),
+    meeting_type:     b.meeting_type || '',
+    public_reference: b.reference_code || '',
+    notes:            b.notes || '',
+  };
+}
+
+export default function BookingPanel({
+  booking,
+  resources = [],
+  eventTypes = [],
+  mode = 'view',
+  returnParams = '',
+  closeHref,
+  editHref,
+  viewHref,
+}) {
   const router = useRouter();
+
+  // Initial form snapshot — rebuilds when the booking changes.
+  const initial = useMemo(() => buildInitialForm(booking || {}), [booking?.id]);
+  const [form, setForm] = useState(initial);
+  useEffect(() => { setForm(initial); }, [initial]);
+
+  const setF = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
+
+  const isDirty = useMemo(() => {
+    return Object.keys(initial).some((k) => String(initial[k] ?? '') !== String(form[k] ?? ''));
+  }, [form, initial]);
+
+  // Cancel-accordion local state (view mode, confirmed bookings)
+  const [cancelling, setCancelling] = useState(false);
+  useEffect(() => { setCancelling(false); }, [booking?.id, mode]);
 
   // Close on Escape
   useEffect(() => {
@@ -40,6 +89,7 @@ export default function BookingPanel({ booking, mode = 'view', closeHref, editHr
   if (!booking) return null;
 
   const initialsBg = `linear-gradient(135deg, ${avatarColor(booking.customer_name)}, color-mix(in oklch, ${avatarColor(booking.customer_name)} 70%, #000))`;
+  const status = booking.status;
 
   return (
     <>
@@ -49,23 +99,19 @@ export default function BookingPanel({ booking, mode = 'view', closeHref, editHr
         <div className="bp-head">
           <div className="bp-head-top">
             <div className="bp-head-eyebrow">
-              {mode === 'edit' ? <>Editing · <b>#{booking.id?.slice(0, 8)}</b></> : <>Booking · <b>#{booking.id?.slice(0, 8)}</b></>}
+              {mode === 'edit'
+                ? <>Editing · <b>#{booking.id?.slice(0, 8)}</b>{isDirty && <span className="bp-dirty-dot" title="Unsaved changes" />}</>
+                : <>Booking · <b>#{booking.id?.slice(0, 8)}</b></>}
             </div>
             <div className="bp-head-actions">
-              {mode === 'view' && editHref && (
-                <a className="bp-iconbtn" title="Edit booking" href={editHref} aria-label="Edit">
-                  ✎
-                </a>
+              {mode === 'view' && editHref && status !== 'cancelled' && (
+                <a className="bp-iconbtn" title="Edit booking" href={editHref} aria-label="Edit">✎</a>
               )}
               {mode === 'edit' && viewHref && (
-                <a className="bp-iconbtn" title="Back to view" href={viewHref} aria-label="View">
-                  ←
-                </a>
+                <a className="bp-iconbtn" title="Back to view" href={viewHref} aria-label="View">←</a>
               )}
               {closeHref && (
-                <a className="bp-iconbtn" title="Close (Esc)" href={closeHref} aria-label="Close">
-                  ✕
-                </a>
+                <a className="bp-iconbtn" title="Close (Esc)" href={closeHref} aria-label="Close">✕</a>
               )}
             </div>
           </div>
@@ -73,15 +119,15 @@ export default function BookingPanel({ booking, mode = 'view', closeHref, editHr
           <div className="bp-hero">
             <div className="bp-av" style={{ background: initialsBg }}>{initials(booking.customer_name)}</div>
             <div style={{ minWidth: 0 }}>
-              <h2>{booking.customer_name || '—'}</h2>
-              <div className="bp-sub">{booking.customer_email || '—'}</div>
+              <h2>{mode === 'edit' ? (form.customer_name || '—') : (booking.customer_name || '—')}</h2>
+              <div className="bp-sub">{mode === 'edit' ? (form.customer_email || booking.customer_email || '—') : (booking.customer_email || '—')}</div>
             </div>
           </div>
 
           <div className="bp-meta-chips">
-            <span className={`bp-chip ${pillClass(booking.status)}`}>
+            <span className={`bp-chip ${pillClass(status)}`}>
               <span className="dot" />
-              {booking.status}
+              {status}
             </span>
             {booking.event_type_name && (
               <span className="bp-chip">
@@ -92,23 +138,121 @@ export default function BookingPanel({ booking, mode = 'view', closeHref, editHr
           </div>
         </div>
 
-        {/* BODY */}
-        <div className="bp-body">
-          {mode === 'view' ? (
-            <BookingPanelView booking={booking} />
-          ) : (
-            <div className="bp-section">
-              <div className="bp-note-empty">Edit mode coming in next phase.</div>
-            </div>
-          )}
-        </div>
-
-        {/* FOOTER — placeholder; real footer wired in Phase 3 */}
-        <div className="bp-foot">
-          <div style={{ fontSize: 12, color: 'var(--av-ink-3)' }}>
-            Use the buttons in the list to confirm or cancel for now.
+        {/* EDIT BANNER */}
+        {mode === 'edit' && (
+          <div className="bp-edit-banner">
+            <span className="eb-pill">Edit mode</span>
+            <span>Changes are not saved until you click <b>Save changes</b>.</span>
           </div>
-        </div>
+        )}
+
+        {/* BODY */}
+        {mode === 'edit' ? (
+          <form action="/booking-actions/update" method="post" style={{ display: 'contents' }}>
+            <input type="hidden" name="booking_id" value={booking.id} />
+            {returnParams && <input type="hidden" name="return_params" value={returnParams} />}
+
+            <div className="bp-body">
+              <BookingPanelEdit
+                booking={booking}
+                form={form}
+                setF={setF}
+                resources={resources}
+                eventTypes={eventTypes}
+              />
+            </div>
+
+            {/* FOOTER — edit mode */}
+            <div className="bp-foot">
+              <div className="danger-zone">
+                {isDirty
+                  ? <span><span className="bp-dirty-dot" /> Unsaved changes</span>
+                  : <span>No changes yet</span>}
+              </div>
+              <div className="right-actions">
+                {viewHref && (
+                  <a className="btn-soft" href={viewHref}>Discard</a>
+                )}
+                <button
+                  type="submit"
+                  className="btn-brand"
+                  disabled={!isDirty}
+                >
+                  Save changes
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div className="bp-body">
+              <BookingPanelView booking={booking} />
+            </div>
+
+            {/* FOOTER — view mode, status-aware */}
+            <div className="bp-foot">
+              {status === 'provisional' && (
+                <>
+                  <form action="/booking-actions/cancel" method="post" style={{ marginRight: 'auto' }}>
+                    <input type="hidden" name="booking_id" value={booking.id} />
+                    {returnParams && <input type="hidden" name="return_params" value={returnParams} />}
+                    <button type="submit" className="btn-soft">Decline</button>
+                  </form>
+                  <div className="right-actions">
+                    {editHref && <a className="btn-soft" href={editHref}>Edit</a>}
+                    <form action="/booking-actions/confirm" method="post" style={{ display: 'inline' }}>
+                      <input type="hidden" name="booking_id" value={booking.id} />
+                      {returnParams && <input type="hidden" name="return_params" value={returnParams} />}
+                      <button type="submit" className="btn-confirm">Confirm booking</button>
+                    </form>
+                  </div>
+                </>
+              )}
+
+              {status === 'confirmed' && (
+                <>
+                  <div className="danger-zone">
+                    <details open={cancelling} onToggle={(e) => setCancelling(e.currentTarget.open)}>
+                      <summary>✕ Cancel booking</summary>
+                      {cancelling && (
+                        <form action="/booking-actions/cancel" method="post" className="cancel-form">
+                          <input type="hidden" name="booking_id" value={booking.id} />
+                          {returnParams && <input type="hidden" name="return_params" value={returnParams} />}
+                          <label htmlFor="bp-cancel-reason" style={{ fontSize: 11, color: 'var(--av-ink-3)' }}>
+                            Reason (optional)
+                          </label>
+                          <textarea
+                            id="bp-cancel-reason"
+                            name="reason"
+                            placeholder="Why is this being cancelled? The customer will see this."
+                            rows="3"
+                          />
+                          <div className="cf-actions">
+                            <button type="button" className="btn-soft" onClick={() => setCancelling(false)}>
+                              Keep booking
+                            </button>
+                            <button type="submit" className="btn-danger">Cancel anyway</button>
+                          </div>
+                        </form>
+                      )}
+                    </details>
+                  </div>
+                  <div className="right-actions">
+                    {editHref && <a className="btn-brand" href={editHref}>✎ Edit</a>}
+                  </div>
+                </>
+              )}
+
+              {status === 'cancelled' && (
+                <>
+                  <div className="danger-zone" style={{ color: 'var(--av-ink-3)' }}>
+                    This booking was cancelled. It is read-only.
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </aside>
     </>
   );

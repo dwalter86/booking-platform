@@ -22,6 +22,7 @@ export async function POST(request) {
   const token = cookies().get('booking_admin_token')?.value || null;
   const form = await request.formData();
   const bookingId = String(form.get('booking_id') || '').trim();
+  const returnParams = String(form.get('return_params') || '').trim();
   const baseUrl = getBaseUrl();
   const tenantSubdomain = getTenantSubdomain();
 
@@ -43,11 +44,14 @@ export async function POST(request) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const msg = encodeURIComponent(data?.error || 'Unable to confirm booking');
-      return NextResponse.redirect(new URL(`/bookings?error=${msg}`, baseUrl), 302);
+      const base = returnParams ? `/bookings?${returnParams}&booking_id=${bookingId}` : `/bookings?booking_id=${bookingId}`;
+      return NextResponse.redirect(new URL(`${base}&error=${msg}`, baseUrl), 302);
     }
   } catch {
-    return NextResponse.redirect(new URL('/bookings?error=API%20unavailable', baseUrl), 302);
+    const base = returnParams ? `/bookings?${returnParams}&booking_id=${bookingId}` : `/bookings?booking_id=${bookingId}`;
+    return NextResponse.redirect(new URL(`${base}&error=API%20unavailable`, baseUrl), 302);
   }
 
-  return NextResponse.redirect(new URL('/bookings?success=Booking%20confirmed', baseUrl), 302);
+  const successBase = returnParams ? `/bookings?${returnParams}&booking_id=${bookingId}` : `/bookings?booking_id=${bookingId}`;
+  return NextResponse.redirect(new URL(`${successBase}&success=Booking%20confirmed`, baseUrl), 302);
 }

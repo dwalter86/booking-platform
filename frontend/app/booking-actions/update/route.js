@@ -33,20 +33,25 @@ export async function POST(request) {
   const startAt = String(form.get('start_at') || '').trim();
   const endAt = String(form.get('end_at') || '').trim();
 
-  const payload = {
-    customer_name:  String(form.get('customer_name')  || '').trim(),
-    customer_email: String(form.get('customer_email') || '').trim() || null,
-    customer_phone: String(form.get('customer_phone') || '').trim() || null,
-    party_size:     String(form.get('party_size')     || '').trim() || null,
-    notes:          String(form.get('notes')          || '').trim() || null,
-    start_at:       startAt || null,
-    end_at:         endAt   || null,
-  };
-
-  // Strip nulls/empty so backend only processes provided fields
-  for (const key of Object.keys(payload)) {
-    if (payload[key] === null || payload[key] === '') delete payload[key];
+  const payload = {};
+  const fields = [
+    'customer_name', 'customer_email', 'customer_phone', 'party_size',
+    'notes', 'event_type_id', 'resource_id', 'meeting_type', 'public_reference',
+  ];
+  for (const f of fields) {
+    if (form.has(f)) {
+      const v = String(form.get(f) || '').trim();
+      // Empty string for nullable fields means "clear it" -> send null
+      // For customer_name (required), empty string flows through and backend rejects it
+      if (v === '' && f !== 'customer_name') {
+        payload[f] = null;
+      } else {
+        payload[f] = v;
+      }
+    }
   }
+  if (startAt) payload.start_at = startAt;
+  if (endAt)   payload.end_at   = endAt;
 
   try {
     const response = await fetch(`${config.apiBaseUrl}/api/bookings/${bookingId}`, {

@@ -37,9 +37,10 @@ export default async function BookingsPage({ searchParams }) {
     }
   }
 
-  const [bookingsRes, resourcesRes] = await Promise.all([
+  const [bookingsRes, resourcesRes, eventTypesRes] = await Promise.all([
     apiFetch(`/api/bookings${query.toString() ? `?${query.toString()}` : ''}`),
     apiFetch('/api/resources'),
+    apiFetch('/api/event-types'),
   ]);
 
   const bookingsData = bookingsRes.ok ? await bookingsRes.json().catch(() => ({})) : {};
@@ -47,6 +48,7 @@ export default async function BookingsPage({ searchParams }) {
   const pagination = bookingsData.pagination || null;
   const error = bookingsRes.ok ? '' : (bookingsData?.error || 'Unable to load bookings.');
   const resources = resourcesRes.ok ? await resourcesRes.json().catch(() => []) : [];
+  const eventTypes = eventTypesRes.ok ? await eventTypesRes.json().catch(() => []) : [];
 
   const selectedBookingId = searchParams?.booking_id || '';
   const selectedBooking = bookings.find((b) => b.id === selectedBookingId) || null;
@@ -234,14 +236,17 @@ export default async function BookingsPage({ searchParams }) {
     </LayoutShell>
 
     {selectedBooking && (
-      <BookingPanel
-        booking={selectedBooking}
-        mode={isEditMode ? 'edit' : 'view'}
-        closeHref={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))).toString()}`}
-        editHref={`/bookings?${new URLSearchParams({ ...(searchParams || {}), edit: '1' }).toString()}`}
-        viewHref={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
-      />
-    )}
+        <BookingPanel
+          booking={selectedBooking}
+          resources={resources}
+          eventTypes={eventTypes}
+          mode={isEditMode ? 'edit' : 'view'}
+          returnParams={detailReturnParams}
+          closeHref={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'booking_id' && k !== 'edit'))).toString()}`}
+          editHref={`/bookings?${new URLSearchParams({ ...(searchParams || {}), edit: '1' }).toString()}`}
+          viewHref={`/bookings?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams || {}).filter(([k]) => k !== 'edit'))).toString()}`}
+        />
+      )}
     </>
   );
 }
