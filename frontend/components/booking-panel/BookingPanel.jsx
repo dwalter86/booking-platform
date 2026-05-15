@@ -73,6 +73,14 @@ export default function BookingPanel({
     return Object.keys(initial).some((k) => String(initial[k] ?? '') !== String(form[k] ?? ''));
   }, [form, initial]);
 
+  // Slide-in animation: render closed on mount, flip to open on next paint
+  // so the browser actually sees the transition.
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   // Cancel-accordion local state (view mode, confirmed bookings)
   const [cancelling, setCancelling] = useState(false);
   useEffect(() => { setCancelling(false); }, [booking?.id, mode]);
@@ -93,8 +101,8 @@ export default function BookingPanel({
 
   return (
     <>
-      <div className="bp-backdrop open" onClick={() => closeHref && router.push(closeHref)} />
-      <aside className="bp-panel open" role="dialog" aria-modal="true" aria-label="Booking details">
+      <div className={`bp-backdrop${isOpen ? ' open' : ''}`} onClick={() => closeHref && router.push(closeHref)} />
+      <aside className={`bp-panel${isOpen ? ' open' : ''}`} role="dialog" aria-modal="true" aria-label="Booking details">
         {/* HEADER */}
         <div className="bp-head">
           <div className="bp-head-top">
