@@ -1,6 +1,6 @@
 import LayoutShell from '../../../components/LayoutShell';
 import TodayHero from '../../../components/TodayHero';
-import ActivityTable from '../../../components/ActivityTable';
+import DashboardActivityPanel from '../../../components/DashboardActivityPanel';
 import UtilisationRings from '../../../components/UtilisationRings';
 import PendingApprovals from '../../../components/PendingApprovals';
 import BookingLinkCard from '../../../components/BookingLinkCard';
@@ -321,7 +321,7 @@ export default async function DashboardPage() {
         showResourceSelector={resources.length > 1 && subscription?.plan_code !== 'solo'}
       />
 
-      <ActivityTable initialBookings={bookings} totalCount={totalBookings} />
+      <DashboardActivityPanel initialBookings={bookings} totalCount={totalBookings} />
     </LayoutShell>
   );
 }

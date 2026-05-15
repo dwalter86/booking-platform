@@ -28,7 +28,7 @@ function StatusPill({ status }) {
 
 const TABS = [['all', 'All'], ['confirmed', 'Confirmed'], ['provisional', 'Pending'], ['cancelled', 'Cancelled']];
 
-export default function ActivityTable({ initialBookings = [], totalCount = 0 }) {
+export default function ActivityTable({ initialBookings = [], totalCount = 0, onView }) {
   const [tab, setTab] = useState('all');
 
   const filtered = useMemo(() => {
@@ -159,14 +159,29 @@ export default function ActivityTable({ initialBookings = [], totalCount = 0 }) 
 
                   {/* Action */}
                   <td style={{ padding: '10px 16px' }}>
-                    <a href={`/bookings?booking_id=${row.id}`} style={{
-                      fontSize: 12, color: 'var(--av-ink-3)', textDecoration: 'none',
-                      padding: '4px 9px', borderRadius: 6,
-                      border: '1px solid var(--av-line)', background: '#fff',
-                      display: 'inline-flex', alignItems: 'center', gap: 3,
-                    }}>
-                      View
-                    </a>
+                    {onView ? (
+                      <button
+                        type="button"
+                        onClick={() => onView(row.id)}
+                        style={{
+                          fontSize: 12, color: 'var(--av-ink-3)', cursor: 'pointer',
+                          padding: '4px 9px', borderRadius: 6,
+                          border: '1px solid var(--av-line)', background: '#fff',
+                          display: 'inline-flex', alignItems: 'center', gap: 3,
+                        }}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <a href={`/bookings?booking_id=${row.id}`} style={{
+                        fontSize: 12, color: 'var(--av-ink-3)', textDecoration: 'none',
+                        padding: '4px 9px', borderRadius: 6,
+                        border: '1px solid var(--av-line)', background: '#fff',
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                      }}>
+                        View
+                      </a>
+                    )}
                   </td>
                 </tr>
               );
