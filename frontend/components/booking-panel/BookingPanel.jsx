@@ -81,6 +81,14 @@ export default function BookingPanel({
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Slide-out: flip isOpen to false, wait for the transition, then navigate.
+  // Duration must match the .32s in .bp-panel's CSS transition.
+  const requestClose = (href) => {
+    if (!href) return;
+    setIsOpen(false);
+    setTimeout(() => router.push(href), 320);
+  };
+
   // Cancel-accordion local state (view mode, confirmed bookings)
   const [cancelling, setCancelling] = useState(false);
   useEffect(() => { setCancelling(false); }, [booking?.id, mode]);
@@ -88,11 +96,11 @@ export default function BookingPanel({
   // Close on Escape
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape' && closeHref) router.push(closeHref);
+      if (e.key === 'Escape') requestClose(closeHref);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [closeHref, router]);
+  }, [closeHref]);
 
   if (!booking) return null;
 
@@ -101,7 +109,7 @@ export default function BookingPanel({
 
   return (
     <>
-      <div className={`bp-backdrop${isOpen ? ' open' : ''}`} onClick={() => closeHref && router.push(closeHref)} />
+      <div className={`bp-backdrop${isOpen ? ' open' : ''}`} onClick={() => requestClose(closeHref)} />
       <aside className={`bp-panel${isOpen ? ' open' : ''}`} role="dialog" aria-modal="true" aria-label="Booking details">
         {/* HEADER */}
         <div className="bp-head">
@@ -119,7 +127,7 @@ export default function BookingPanel({
                 <a className="bp-iconbtn" title="Back to view" href={viewHref} aria-label="View">←</a>
               )}
               {closeHref && (
-                <a className="bp-iconbtn" title="Close (Esc)" href={closeHref} aria-label="Close">✕</a>
+                <button type="button" className="bp-iconbtn" title="Close (Esc)" aria-label="Close" onClick={() => requestClose(closeHref)}>✕</button>
               )}
             </div>
           </div>
