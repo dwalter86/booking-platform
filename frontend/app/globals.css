@@ -587,6 +587,7 @@ pre {
 .cols-bookings  { grid-template-columns: 1.5fr 1fr 1fr 1.2fr .9fr auto; }
 .cols-locations { grid-template-columns: 1.6fr 1fr .9fr 1fr .9fr 116px; }
 .cols-admin-users { grid-template-columns: 1.4fr 1.8fr .8fr .9fr 1fr auto; }
+.cols-audit { grid-template-columns: 170px 110px 120px 1fr; }
 .av-list-row > * { min-width: 0; }
 
 /* Cell primitives */
