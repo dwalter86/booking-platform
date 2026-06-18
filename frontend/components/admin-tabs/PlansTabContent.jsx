@@ -3,12 +3,16 @@ import DataCard from '../DataCard';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadge(status) {
-  if (status === 'trial')    return <span className="badge bg-info-lt">Trial</span>;
-  if (status === 'grace')    return <span className="badge bg-warning-lt">Grace period</span>;
-  if (status === 'active')   return <span className="badge bg-green-lt">Active</span>;
-  if (status === 'past_due') return <span className="badge bg-red-lt">Past due</span>;
-  if (status === 'cancelled')return <span className="badge bg-secondary-lt">Cancelled</span>;
-  return <span className="badge bg-secondary-lt">{status || 'Unknown'}</span>;
+  // Map subscription status to an av-pill variant (matches Settings/Admin Users).
+  const map = {
+    active:    ['active',   'Active'],
+    trial:     ['pending',  'Trial'],
+    grace:     ['paused',   'Grace period'],
+    past_due:  ['full',     'Past due'],
+    cancelled: ['inactive', 'Cancelled'],
+  };
+  const [cls, label] = map[status] || ['inactive', status || 'Unknown'];
+  return <span className={`av-pill ${cls}`}><span className="av-dot" />{label}</span>;
 }
 
 function periodLabel(status) {
@@ -166,13 +170,14 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
                   </span>
                 </div>
                 {limit != null && (
-                  <div className="progress" style={{ height: 4 }}>
+                  <div style={{ height: 5, borderRadius: 99, background: 'var(--av-paper-3)', overflow: 'hidden' }}>
                     <div
-                      className={`progress-bar ${
-                        pct > 90 ? 'bg-danger' :
-                        pct > 70 ? 'bg-warning' : 'bg-success'
-                      }`}
-                      style={{ width: `${pct}%` }}
+                      style={{
+                        width: `${pct}%`,
+                        height: '100%',
+                        borderRadius: 99,
+                        background: pct > 90 ? 'var(--av-rose)' : pct > 70 ? 'var(--av-amber)' : 'var(--av-sage)',
+                      }}
                     />
                   </div>
                 )}
@@ -193,7 +198,7 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
                   <th key={p.code} className="text-center">
                     {p.name}
                     {sub?.plan_code === p.code && (
-                      <span className="badge bg-blue-lt ms-1 fw-normal" style={{ fontSize: '0.65rem' }}>
+                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--av-main)', background: 'var(--av-brand-50, #eef4fd)', padding: '2px 6px', borderRadius: 99 }}>
                         current
                       </span>
                     )}
@@ -219,7 +224,7 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
 
               {/* Divider */}
               <tr>
-                <td colSpan={visiblePlans.length + 1} className="bg-light py-1">
+                <td colSpan={visiblePlans.length + 1} className="py-1" style={{ background: 'var(--av-paper-2)' }}>
                   <span className="text-secondary small">Features</span>
                 </td>
               </tr>
@@ -231,8 +236,8 @@ export default function PlansTabContent({ catalogue, entitlements, subscription 
                   {visiblePlans.map(p => (
                     <td key={p.code} className="text-center">
                       {getFeature(features, p.id, key)
-                        ? <span className="text-success">✓</span>
-                        : <span className="text-muted">—</span>
+                        ? <span style={{ color: 'var(--av-sage)' }}>✓</span>
+                        : <span className="av-muted">—</span>
                       }
                     </td>
                   ))}
