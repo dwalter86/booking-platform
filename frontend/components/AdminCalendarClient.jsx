@@ -35,6 +35,18 @@ function fmt(value) {
   }
 }
 
+// Mono-label key/value field for the block details panel (av detail style).
+function BlockField({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontFamily: 'var(--av-font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--av-ink-3)', marginBottom: 3 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, color: 'var(--av-ink)' }}>{value}</div>
+    </div>
+  );
+}
+
 export default function AdminCalendarClient({ resources = [], unavailabilityBlocks = [], initialView = 'timeGridWeek' }) {
   const [bookings, setBookings] = useState([]);
   const [selectedResourceId, setSelectedResourceId] = useState('');
@@ -303,38 +315,31 @@ export default function AdminCalendarClient({ resources = [], unavailabilityBloc
         {selectedEvent && (
           <div className="col-lg-4">
             <div className="card">
-              <div className="card-header d-flex align-items-center justify-content-between" style={{ backgroundColor: '#1e2a78', color: '#ffffff' }}>
-                <h3 className="card-title mb-0" style={{ color: '#ffffff' }}>
-                  Unavailability block
-                </h3>
+              <div className="card-header d-flex align-items-center justify-content-between">
+                <h3 className="card-title mb-0">Unavailability block</h3>
                 <button
-                  className="btn btn-sm btn-outline-light"
+                  className="av-tiny-btn"
                   onClick={() => setSelectedEvent(null)}
+                  aria-label="Close"
                 >
-                  Close
+                  ✕
                 </button>
               </div>
               <div className="card-body">
                 {selectedEvent.type === 'unavailability' && (
                   <>
-                    <dl className="row mb-0">
-                      <dt className="col-sm-4">Resource</dt>
-                      <dd className="col-sm-8">{selectedEvent.raw.resource_name || '—'}</dd>
-                      <dt className="col-sm-4">Start</dt>
-                      <dd className="col-sm-8">{fmt(selectedEvent.raw.start_at)}</dd>
-                      <dt className="col-sm-4">End</dt>
-                      <dd className="col-sm-8">{fmt(selectedEvent.raw.end_at)}</dd>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <BlockField label="Resource" value={selectedEvent.raw.resource_name || '—'} />
+                      <BlockField label="Start" value={fmt(selectedEvent.raw.start_at)} />
+                      <BlockField label="End" value={fmt(selectedEvent.raw.end_at)} />
                       {selectedEvent.raw.reason && (
-                        <>
-                          <dt className="col-sm-4">Reason</dt>
-                          <dd className="col-sm-8">{selectedEvent.raw.reason}</dd>
-                        </>
+                        <BlockField label="Reason" value={selectedEvent.raw.reason} />
                       )}
-                    </dl>
-                    <hr />
-                    <a               
+                    </div>
+                    <a
                       href={`/resources?resource_id=${selectedEvent.raw.resource_id}&panel=unavailability`}
-                      className="btn btn-outline-secondary"
+                      className="av-tiny-btn primary"
+                      style={{ marginTop: 16 }}
                     >
                       Manage in resources
                     </a>
