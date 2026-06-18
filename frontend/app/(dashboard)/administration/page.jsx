@@ -83,8 +83,25 @@ export default async function AdministrationPage({ searchParams }) {
     content = <div className="alert alert-warning">Unknown tab.</div>;
   }
 
+  const breadcrumb = (
+    <>
+      <span>Workspace</span>
+      <span className="av-crumb-sep">›</span>
+      <span className="av-crumb-now">Administration</span>
+    </>
+  );
+
   return (
-    <LayoutShell title="Administration" headerAction={<AdminTabBar activeTab={tab} />}>
+    <LayoutShell breadcrumb={breadcrumb}>
+      <div className="av-page-header">
+        <div className="av-ph-title">
+          <h1>Administration</h1>
+          <p>Manage your account, team, subscription and activity log.</p>
+        </div>
+      </div>
+      <div style={{ marginBottom: 18 }}>
+        <AdminTabBar activeTab={tab} />
+      </div>
       {content}
     </LayoutShell>
   );

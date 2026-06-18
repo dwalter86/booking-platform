@@ -530,7 +530,10 @@ pre {
   border-radius: 9px;
   padding: 2px;
 }
-.av-seg button {
+.av-seg button,
+.av-seg a {
+  display: inline-flex;
+  align-items: center;
   padding: 5px 10px;
   border-radius: 7px;
   font-size: 12px;
@@ -539,8 +542,10 @@ pre {
   border: none;
   background: none;
   cursor: pointer;
+  text-decoration: none;
 }
-.av-seg button.active {
+.av-seg button.active,
+.av-seg a.active {
   background: #fff;
   color: var(--av-ink);
   box-shadow: var(--av-shadow-sm);

@@ -87,9 +87,9 @@ const multiResourceNav = {
     { label: 'Locations', href: '/locations',     icon: Icons.locations },
   ],
   account: [
-    { label: 'Plans',       href: '/plans',          icon: Icons.plans    },
-    { label: 'Admin users', href: '/administration', icon: Icons.users    },
-    { label: 'Settings',    href: '/administration', icon: Icons.settings },
+    { label: 'Plans',       href: '/administration?tab=plans',       icon: Icons.plans    },
+    { label: 'Admin users', href: '/administration?tab=admin-users', icon: Icons.users    },
+    { label: 'Settings',    href: '/administration?tab=settings',    icon: Icons.settings },
   ],
 };
 
@@ -105,9 +105,9 @@ const soloNav = {
     { label: 'Locations',   href: '/locations',  icon: Icons.locations  },
   ],
   account: [
-    { label: 'Plans',       href: '/plans',          icon: Icons.plans    },
-    { label: 'Admin users', href: '/administration', icon: Icons.users    },
-    { label: 'Settings',    href: '/administration', icon: Icons.settings },
+    { label: 'Plans',       href: '/administration?tab=plans',       icon: Icons.plans    },
+    { label: 'Admin users', href: '/administration?tab=admin-users', icon: Icons.users    },
+    { label: 'Settings',    href: '/administration?tab=settings',    icon: Icons.settings },
   ],
 };
 
