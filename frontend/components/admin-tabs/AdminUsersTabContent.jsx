@@ -77,57 +77,57 @@ export default function AdminUsersTabContent({ rows, editUser, success, error })
         </DataCard>
       )}
 
-      <DataCard
-        title="Tenant admin users"
-        headerAction={
-          <button
-            className="btn btn-sm btn-primary"
-            type="button"
-            onClick={() => setShowAddForm(prev => !prev)}
-          >
-            {showAddForm ? 'Cancel' : '+ Add admin'}
-          </button>
-        }
-      >
-        <div className="table-responsive">
-          <table className="table table-striped">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Last login</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(rows) && rows.length ? rows.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.full_name || '—'}</td>
-                  <td>{row.email}</td>
-                  <td>{row.role || 'admin'}</td>
-                  <td>
-                    {row.is_active
-                      ? <span className="badge bg-green-lt">Active</span>
-                      : <span className="badge bg-red-lt">Inactive</span>}
-                  </td>
-                  <td>{row.last_login_at
-                    ? new Date(row.last_login_at).toLocaleDateString('en-GB')
-                    : '—'}
-                  </td>
-                  <td>
-                    <a className="btn btn-sm btn-outline-primary"
-                      href={`/administration?tab=admin-users&edit=${row.id}`}>Edit</a>
-                  </td>
-                </tr>
-              )) : (
-                <tr><td colSpan="6" className="text-secondary">No admin users found.</td></tr>
-              )}
-            </tbody>
-          </table>
+      <div className="d-flex align-items-center justify-content-between mb-2">
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--av-ink)' }}>
+          Tenant admin users
+        </h3>
+        <button
+          className="av-tiny-btn primary"
+          type="button"
+          onClick={() => setShowAddForm(prev => !prev)}
+        >
+          {showAddForm ? 'Cancel' : '+ Add admin'}
+        </button>
+      </div>
+
+      <div className="av-list">
+        <div className="av-list-row av-list-head cols-admin-users">
+          <div>Name</div>
+          <div>Email</div>
+          <div>Role</div>
+          <div>Status</div>
+          <div>Last login</div>
+          <div></div>
         </div>
-      </DataCard>
+        {Array.isArray(rows) && rows.length ? rows.map((row) => (
+          <div key={row.id} className="av-list-row cols-admin-users">
+            <div className="av-cell-name">
+              <div className="av-name">{row.full_name || '—'}</div>
+            </div>
+            <div className="av-cell-meta">{row.email}</div>
+            <div className="av-cell-meta" style={{ textTransform: 'capitalize' }}>{row.role || 'admin'}</div>
+            <div>
+              <span className={`av-pill ${row.is_active ? 'active' : 'inactive'}`}>
+                <span className="av-dot" />
+                {row.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div className="av-cell-meta">
+              {row.last_login_at
+                ? new Date(row.last_login_at).toLocaleDateString('en-GB')
+                : '—'}
+            </div>
+            <div className="av-row-actions">
+              <a className="av-tiny-btn primary"
+                href={`/administration?tab=admin-users&edit=${row.id}`}>Edit</a>
+            </div>
+          </div>
+        )) : (
+          <div className="av-list-row" style={{ display: 'block' }}>
+            <span className="av-muted">No admin users found.</span>
+          </div>
+        )}
+      </div>
     </>
   );
 }
