@@ -28,8 +28,16 @@ export default async function CalendarPage({ searchParams }) {
 
   const initialView = searchParams?.view || 'timeGridWeek';
 
+  const breadcrumb = (
+    <>
+      <span>Workspace</span>
+      <span className="av-crumb-sep">›</span>
+      <span className="av-crumb-now">Calendar</span>
+    </>
+  );
+
   return (
-  <LayoutShell>
+    <LayoutShell breadcrumb={breadcrumb}>
       <ErrorAlert message={error} />
       <AdminCalendarClient
         resources={resources}

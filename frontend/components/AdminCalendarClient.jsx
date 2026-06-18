@@ -165,63 +165,58 @@ export default function AdminCalendarClient({ resources = [], unavailabilityBloc
 
   return (
     <>
+      {/* — Page header — */}
+      <div className="av-page-header">
+        <div className="av-ph-title">
+          <h1>Calendar</h1>
+          <p>All bookings, blocks and provisional holds across your resources — at a glance.</p>
+        </div>
+      </div>
+
+      {/* — Toolbar — */}
+      <div className="av-toolbar">
+        <button className="av-filter-chip" onClick={() => navigate('prev')} aria-label="Previous">←</button>
+        <button className="av-filter-chip" onClick={() => navigate('today')}>Today</button>
+        <button className="av-filter-chip" onClick={() => navigate('next')} aria-label="Next">→</button>
+        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--av-ink)', marginLeft: 4 }}>{calendarTitle}</span>
+
+        <select
+          className="av-filter-chip"
+          value={selectedResourceId}
+          onChange={(e) => setSelectedResourceId(e.target.value)}
+        >
+          <option value="">All resources</option>
+          {resources.map((r) => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+
+        <div className="av-tb-spacer" />
+
+        <button
+          className={`av-filter-chip${showBlocks ? ' active' : ''}`}
+          onClick={() => setShowBlocks(!showBlocks)}
+        >
+          <span className="av-dot" style={{ background: 'var(--av-rose)' }} />Blocks
+        </button>
+        <button
+          className={`av-filter-chip${showProvisional ? ' active' : ''}`}
+          onClick={() => setShowProvisional(!showProvisional)}
+        >
+          <span className="av-dot" style={{ background: 'var(--av-amber)' }} />Provisional
+        </button>
+
+        <div className="av-seg">
+          <button className={activeView === 'timeGridDay' ? 'active' : ''} onClick={() => navigate('timeGridDay')}>Day</button>
+          <button className={activeView === 'timeGridWeek' ? 'active' : ''} onClick={() => navigate('timeGridWeek')}>Week</button>
+          <button className={activeView === 'dayGridMonth' ? 'active' : ''} onClick={() => navigate('dayGridMonth')}>Month</button>
+        </div>
+      </div>
 
       {/* Main layout */}
       <div className="row g-4">
         <div className={selectedEvent ? 'col-lg-8' : 'col-12'}>
           <div className="card">
-            <div className="card-header d-flex align-items-center gap-2 flex-wrap">
-
-              <select
-                className="form-select form-select-sm"
-                style={{ width: 'auto' }}
-                value={selectedResourceId}
-                onChange={(e) => setSelectedResourceId(e.target.value)}
-              >
-                <option value="">All resources</option>
-                {resources.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
-
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('prev')}>&#8592;</button>
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('today')}>Today</button>
-              <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate('next')}>&#8594;</button>
-
-              <span className="text-secondary" style={{ fontSize: '14px', fontWeight: 500 }}>{calendarTitle}</span>
-
-              <div className="ms-auto d-flex align-items-center gap-2">
-                <div className="btn-group btn-group-sm">
-                  <button
-                    className={`btn ${activeView === 'timeGridDay' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => navigate('timeGridDay')}
-                  >Day</button>
-                  <button
-                    className={`btn ${activeView === 'timeGridWeek' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => navigate('timeGridWeek')}
-                  >Week</button>
-                  <button
-                    className={`btn ${activeView === 'dayGridMonth' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => navigate('dayGridMonth')}
-                  >Month</button>
-                </div>
-
-                <button
-                  className={`btn btn-sm ${showBlocks ? 'btn-primary' : 'btn-outline-secondary'}`}
-                  onClick={() => setShowBlocks(!showBlocks)}
-                >
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#d63939', marginRight: 5 }} />
-                  Blocks
-                </button>
-                <button
-                  className={`btn btn-sm ${showProvisional ? 'btn-primary' : 'btn-outline-secondary'}`}
-                  onClick={() => setShowProvisional(!showProvisional)}
-                >
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#f59f00', marginRight: 5 }} />
-                  Provisional
-                </button>
-              </div>
-            </div>
             <div className="card-body p-0">
               {!mounted ? null : <FullCalendarComponent
               
