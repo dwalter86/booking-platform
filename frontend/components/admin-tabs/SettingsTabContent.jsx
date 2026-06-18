@@ -79,6 +79,29 @@ function ReadRow({ label, value }) {
   );
 }
 
+// Maps a tenant/subscription status to an av-pill variant class.
+function pillClass(status) {
+  switch (status) {
+    case 'active':    return 'active';   // green
+    case 'trial':     return 'pending';  // amber
+    case 'grace':     return 'paused';   // amber
+    case 'past_due':  return 'full';     // rose
+    case 'suspended': return 'full';     // rose
+    case 'cancelled': return 'inactive'; // grey
+    default:          return 'inactive';
+  }
+}
+
+function StatusPill({ status }) {
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+  return (
+    <span className={`av-pill ${pillClass(status)}`}>
+      <span className="av-dot" />
+      {label}
+    </span>
+  );
+}
+
 export default function SettingsTabContent({ tenant, subscription, success, error }) {
   const [editSection, setEditSection] = useState(null);
 
@@ -121,9 +144,7 @@ export default function SettingsTabContent({ tenant, subscription, success, erro
           </div>
           <div className="col-md-3">
             <div className="subheader mb-1">Account status</div>
-            <span className={`badge ${tenant.status === 'active' ? 'bg-green-lt' : 'bg-red-lt'}`}>
-              {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
-            </span>
+            <StatusPill status={tenant.status} />
           </div>
           <div className="col-md-3">
             <div className="subheader mb-1">Member since</div>
@@ -134,13 +155,7 @@ export default function SettingsTabContent({ tenant, subscription, success, erro
               <div className="subheader mb-1">Plan</div>
               <div className="d-flex align-items-center gap-2">
                 <span className="fw-medium">{subscription.plan_name || '—'}</span>
-                <span className={`badge ${
-                  subscription.status === 'active'   ? 'bg-green-lt'     :
-                  subscription.status === 'trial'    ? 'bg-info-lt'      :
-                  subscription.status === 'grace'    ? 'bg-warning-lt'   : 'bg-secondary-lt'
-                }`}>
-                  {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
-                </span>
+                <StatusPill status={subscription.status} />
               </div>
             </div>
           )}
@@ -344,7 +359,8 @@ export default function SettingsTabContent({ tenant, subscription, success, erro
             <div className="row g-3">
               <div className="col-md-4">
                 <div className="subheader mb-1">Public booking</div>
-                <span className={`badge ${tenant.public_booking_enabled ? 'bg-green-lt' : 'bg-secondary-lt'}`}>
+                <span className={`av-pill ${tenant.public_booking_enabled ? 'active' : 'inactive'}`}>
+                  <span className="av-dot" />
                   {tenant.public_booking_enabled ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
